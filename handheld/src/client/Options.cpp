@@ -54,7 +54,7 @@ void Options::initDefaultValues() {
   keyJump = KeyMapping("key.jump", Keyboard::KEY_SPACE);
   keyBuild = KeyMapping("key.inventory", Keyboard::KEY_E);
   keySneak = KeyMapping("key.sneak", Keyboard::KEY_LSHIFT);
-#ifndef RPI
+#ifndef SDL3
   keyCraft = KeyMapping("key.crafting", Keyboard::KEY_Q);
   keyDrop = KeyMapping("key.drop", Keyboard::KEY_Q);
   keyChat = KeyMapping("key.chat", Keyboard::KEY_T);
@@ -92,14 +92,14 @@ void Options::initDefaultValues() {
 //	for now, then to have it spread all around the game code (even if
 //	it would be slightly better performance with it inlined. Should
 //  probably create separate subclasses (or read from file). @fix @todo.
-#if defined(ANDROID) || defined(__APPLE__) || defined(RPI)
+#if defined(ANDROID) || defined(__APPLE__) || defined(SDL3)
   viewDistance = 2;
   thirdPersonView = false;
   useMouseForDigging = false;
   fancyGraphics = false;
 
 // renderDebug = true;
-#if !defined(RPI)
+#if !defined(SDL3)
   keyUp.key = 19;
   keyDown.key = 20;
   keyLeft.key = 21;
@@ -116,7 +116,7 @@ void Options::initDefaultValues() {
 #endif
 #endif
 
-#if defined(RPI)
+#if defined(SDL3)
   username = "StevePi";
   sensitivity *= 0.4f;
   useMouseForDigging = true;

@@ -59,7 +59,7 @@ void KeyboardInput::tick(Player *player) {
     ya *= 0.3f;
   }
 
-#ifdef RPI
+#ifdef SDL3
   wantUp = jumping;
   wantDown = sneaking;
 #endif

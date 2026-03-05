@@ -1,10 +1,14 @@
 #include "Minecraft.h"
 
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
+
 #if defined(APPLE_DEMO_PROMOTION)
 #define NO_NETWORK
 #endif
 
-#if defined(RPI)
+#if defined(SDL3)
 #define CREATORMODE
 #endif
 
@@ -414,8 +418,9 @@ void Minecraft::update() {
   //	for (int i = 0; i < level->players.size(); ++i) {
   //		Player* p = level->players[i];
   //		bool inEnt = std::find(level->entities.begin(),
-  //level->entities.end(), p) != level->entities.end(); 		LOGI("  %p, %d, %d - in?
-  //%d\n", p, p->entityId, p->owner.ToUint32(p->owner), inEnt);
+  // level->entities.end(), p) != level->entities.end(); 		LOGI("
+  // %p, %d, %d - in? %d\n", p, p->entityId, p->owner.ToUint32(p->owner),
+  // inEnt);
   //	}
   // }
 
@@ -548,7 +553,7 @@ void Minecraft::tick(int nTick, int maxTick) {
 #ifndef STANDALONE_SERVER
   textures->loadAndBindTexture("terrain.png");
   if (!pause && !(screen && !screen->renderGameBehind())) {
-#if !defined(RPI)
+#if !defined(SDL3)
 #ifdef __APPLE__
     if (isSuperFast())
 #endif
@@ -606,7 +611,7 @@ void Minecraft::tickInput() {
     return;
   }
 
-#ifdef RPI
+#ifdef SDL3
   bool mouseDiggable = true;
   bool allowGuiClicks = !mouseGrabbed;
 #else
@@ -627,7 +632,7 @@ void Minecraft::tickInput() {
 
     const MouseAction &e = Mouse::getEvent();
 
-#ifdef RPI // If clicked when not having focus, get focus @keyboard
+#ifdef SDL3 // If clicked when not having focus, get focus @keyboard
     if (!mouseGrabbed) {
       if (!screen && e.data == MouseAction::DATA_DOWN) {
         grabMouse();
@@ -669,7 +674,7 @@ void Minecraft::tickInput() {
     if (isPressed) {
       gui.handleKeyPressed(key);
 
-#if defined(WIN32) || defined(RPI) //|| defined(_DEBUG) || defined(DEBUG)
+#if defined(WIN32) || defined(SDL3) //|| defined(_DEBUG) || defined(DEBUG)
       if (key >= '0' && key <= '9') {
         int digit = key - '0';
         int slot = digit - 1;
@@ -693,7 +698,7 @@ void Minecraft::tickInput() {
 #endif
       }
 #endif
-#if defined(RPI)
+#if defined(SDL3)
       if (key == Keyboard::KEY_E) {
         screenChooser.setScreen(SCREEN_BLOCKSELECTION);
       }
@@ -817,7 +822,7 @@ void Minecraft::tickInput() {
       }
 #endif
 
-#ifndef RPI
+#ifndef SDL3
       if (key == 82)
         pauseGame(false);
 #else
@@ -880,7 +885,7 @@ void Minecraft::tickInput() {
       (buildHandled && bai.isRemove());
 
   TIMER_POP_PUSH("handlemouse");
-#ifdef RPI
+#ifdef SDL3
   handleMouseDown(MouseAction::ACTION_LEFT, isTryingToDestroyBlock);
   handleMouseClick(buildHandled && bai.isInteract() ||
                    options.useMouseForDigging &&
@@ -906,7 +911,7 @@ void Minecraft::tickInput() {
 
 void Minecraft::handleMouseDown(int button, bool down) {
 #ifndef STANDALONE_SERVER
-#ifndef RPI
+#ifndef SDL3
   if (player->isUsingItem()) {
     if (!down && !Keyboard::isKeyDown(options.keyUse.key)) {
       gameMode->releaseUsingItem(player);
@@ -1001,7 +1006,7 @@ void Minecraft::handleBuildAction(BuildActionIntention *action) {
                               hitResult.pos)) {
         mayUse = false;
         player->swing();
-#ifdef RPI
+#ifdef SDL3
       } else if (item && item->id == ((Item *)Item::sword_iron)->id) {
         player->swing();
 #endif
@@ -1116,7 +1121,7 @@ void Minecraft::releaseMouse() {
 }
 
 bool Minecraft::useTouchscreen() {
-#ifdef RPI
+#ifdef SDL3
   return false;
 #endif
   return options.useTouchScreen || !_supportsNonTouchscreen;
@@ -1234,7 +1239,8 @@ void Minecraft::_reloadInput() {
   if (useTouchscreen()) {
     inputHolder = new TouchInputHolder(this, &options);
   } else {
-#if defined(ANDROID) || defined(__APPLE__)
+#if defined(ANDROID) ||                                                        \
+    (defined(__APPLE__) && defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE)
     inputHolder = new CustomInputHolder(
         new XperiaPlayInput(&options),
         new ControllerTurnInput(2, ControllerTurnInput::MODE_DELTA),
@@ -1357,7 +1363,7 @@ void Minecraft::_levelGenerated() {
     netCallback->levelGenerated(level);
   }
 
-#if defined(WIN32) || defined(RPI)
+#if defined(WIN32) || defined(SDL3)
   if (_commandServer) {
     delete _commandServer;
   }

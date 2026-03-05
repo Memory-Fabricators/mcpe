@@ -1,25 +1,18 @@
 #ifndef APP_H__
 #define APP_H__
 
-#ifdef __APPLE__
-#define NO_EGL
-#endif
-#ifdef STANDALONE_SERVER
-#define NO_EGL
-#endif
+// #ifdef STANDALONE_SERVER
+// #define NO_EGL
+// #endif
 
 #include "AppPlatform.h"
-#ifndef NO_EGL
-#include <EGL/egl.h>
-#endif
 #include "platform/log.h"
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_opengles.h>
 
 typedef struct AppContext {
-#ifndef NO_EGL
-  EGLDisplay display;
-  EGLContext context;
-  EGLSurface surface;
-#endif
+  SDL_Window *window;
+  SDL_GLContext context;
   AppPlatform *platform;
   bool doRender;
 } AppContext;
@@ -54,7 +47,7 @@ public:
   void swapBuffers() {
 #ifndef NO_EGL
     if (_context.doRender)
-      eglSwapBuffers(_context.display, _context.surface);
+      SDL_GL_SwapWindow(_context.window);
 #endif
   }
 

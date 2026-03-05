@@ -39,10 +39,8 @@ void StartMenuScreen::init() {
   tabButtons.push_back(&bHost);
   tabButtons.push_back(&bJoin);
 
-#ifndef RPI
   buttons.push_back(&bOptions);
   tabButtons.push_back(&bOptions);
-#endif
 
 #ifdef DEMO_MODE
   buttons.push_back(&bBuy);
@@ -64,11 +62,7 @@ void StartMenuScreen::init() {
   version = versionString + " (Demo)";
 #endif
 #else
-#ifdef RPI
-  version = "v0.1.1 alpha"; //(MCPE " + versionString + " compatible)";
-#else
   version = versionString;
-#endif
 #endif
 
   bJoin.active = bHost.active = bOptions.active = false;
@@ -79,11 +73,7 @@ void StartMenuScreen::setupPositions() {
 
   // #ifdef ANDROID
   bHost.y = yBase - 28;
-#ifdef RPI
-  bJoin.y = yBase + 4;
-#else
   bJoin.y = yBase;
-#endif
 
   bOptions.y = yBase + 28 + 2;
   bTest.y = bBuy.y = bOptions.y;
@@ -133,7 +123,7 @@ bool StartMenuScreen::isInGameScreen() { return false; }
 void StartMenuScreen::render(int xm, int ym, float a) {
   renderBackground();
 
-#if defined(RPI)
+#if defined(RPI3)
   TextureId id = minecraft->textures->loadTexture("gui/pi_title.png");
 #else
   TextureId id = minecraft->textures->loadTexture("gui/title.png");
@@ -161,11 +151,11 @@ void StartMenuScreen::render(int xm, int ym, float a) {
     t.draw();
   }
 
-#if defined(RPI)
-  if (Textures::isTextureIdValid(minecraft->textures->loadAndBindTexture(
-          "gui/logo/raknet_high_72.png")))
-    blit(0, height - 12, 0, 0, 43, 12, 256, 72 + 72);
-#endif
+  // #if defined(SDL3)
+  //   if (Textures::isTextureIdValid(minecraft->textures->loadAndBindTexture(
+  //           "gui/logo/raknet_high_72.png")))
+  //     blit(0, height - 12, 0, 0, 43, 12, 256, 72 + 72);
+  // #endif
 
   drawString(font, version, versionPosX, 62, /*50,*/ 0xffcccccc); // 0x666666);
   drawString(font, copyright, copyrightPosX, height - 10, 0xffffff);

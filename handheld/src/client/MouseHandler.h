@@ -3,11 +3,14 @@
 
 // package net.minecraft.client;
 
+#include "App.h"
+
 class ITurnInput;
 
 class MouseHandler {
 public:
   MouseHandler(ITurnInput *turnInput);
+  void setWindow(SDL_Window *ctx);
   MouseHandler();
   ~MouseHandler();
 
@@ -22,6 +25,7 @@ public:
 
 private:
   int toSkip;
+  SDL_Window *_window;
   ITurnInput *_turnInput;
 };
 

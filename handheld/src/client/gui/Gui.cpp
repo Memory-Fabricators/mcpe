@@ -100,10 +100,10 @@ void Gui::render(float a, bool mouseFree, int xMouse, int yMouse) {
   unsigned int max = 10;
   bool isChatting = false;
   renderChatMessages(screenHeight, max, isChatting, font);
-#if !defined(RPI)
+#if !defined(SDL3)
   renderOnSelectItemNameText(screenWidth, font, ySlot);
 #endif
-#if defined(RPI)
+#if defined(SDL3)
   renderDebugInfo();
 #endif
 

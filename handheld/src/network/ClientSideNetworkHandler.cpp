@@ -130,7 +130,7 @@ void ClientSideNetworkHandler::handle(const RakNet::RakNetGUID &source,
                                       StartGamePacket *packet) {
   LOGI("StartGamePacket\n");
 
-#ifdef RPI
+#ifdef SDL3
   if (packet->gameType != GameType::Creative) {
     minecraft->setScreen(
         new DisconnectionScreen("Could not connect: Incompatible server!"));

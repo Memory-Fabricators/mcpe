@@ -47,13 +47,7 @@ void __gluMakeIdentityf(GLfloat m[16]) {
   m[15] = 1;
 }
 
-void glInit(SDL_Window *window) {
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 1);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-  SDL_GL_CreateContext(window);
-  SDL_GL_MakeCurrent(window, SDL_GL_GetCurrentContext());
-}
+void glInit(SDL_Window *window) {}
 
 void anGenBuffers(GLsizei n, GLuint *buffers) {
   static GLuint k = 1;

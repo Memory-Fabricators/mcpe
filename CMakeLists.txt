@@ -8,10 +8,22 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
-find_package(SDL3 REQUIRED)
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(GLES1 REQUIRED glesv1_cm)
-pkg_check_modules(OpenAL REQUIRED openal)
+pkg_check_modules(SDL3 REQUIRED IMPORTED_TARGET sdl3)
+pkg_check_modules(GLES1 REQUIRED IMPORTED_TARGET glesv1_cm)
+pkg_check_modules(OpenAL REQUIRED IMPORTED_TARGET openal)
+pkg_check_modules(libpng REQUIRED IMPORTED_TARGET libpng)
+
+if(APPLE)
+    execute_process(COMMAND brew --prefix angle
+                    OUTPUT_VARIABLE ANGLE_PREFIX
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+                    ERROR_QUIET)
+    message(STATUS "ANGLE_PREFIX: ${ANGLE_PREFIX}")
+    if(ANGLE_PREFIX)
+        set(GLES1_INCLUDE_DIRS ${ANGLE_PREFIX}/include)
+    endif()
+endif()
 
 set(SOURCES
     "handheld/src/NinecraftApp.cpp"
@@ -128,7 +140,6 @@ set(SOURCES
     "handheld/src/client/sound/Sound.cpp"
     "handheld/src/client/sound/SoundEngine.cpp"
     "handheld/src/locale/I18n.cpp"
-    "handheld/src/main.cpp"
     "handheld/src/nbt/Tag.cpp"
     "handheld/src/network/ClientSideNetworkHandler.cpp"
     "handheld/src/network/NATPunchHandler.cpp"
@@ -387,24 +398,32 @@ target_sources(
 target_link_libraries(
     mcpe
     PUBLIC
-    ${GLES1_LIBRARIES}
-    ${OpenAL_LIBRARIES}
-    ${SDL3_LIBRARIES}
+    PkgConfig::GLES1
+    PkgConfig::SDL3
+    PkgConfig::libpng
+    PkgConfig::OpenAL
 )
 target_link_directories(
     mcpe
     PUBLIC
     ${GLES1_LIBRARY_DIRS}
     ${OpenAL_LIBRARY_DIRS}
+    ${libpng_LIBRARY_DIRS}
 )
 target_compile_definitions(
     mcpe
-    PRIVATE
+    PUBLIC
+    SDL3
     OPENGL_ES
+    GL_GLES_PROTOTYPES=1
+    GL_GLEXT_PROTOTYPES=1
 )
 target_include_directories(
     mcpe
     PUBLIC
+    ${GLES1_INCLUDE_DIRS}
+    ${SDL3_INCLUDE_DIRS}
+    ${libpng_INCLUDE_DIRS}
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/handheld/src>
     $<INSTALL_INTERFACE:include>
 )
@@ -422,8 +441,27 @@ target_link_libraries(
     PRIVATE
     mcpe
 )
+target_compile_definitions(
+    mcpe_dedicated
+    PRIVATE
+    STANDALONE_SERVER
+)
 
-install(TARGETS mcpe mcpe_dedicated
+add_executable(mcpe_sdl3
+    handheld/src/main.cpp
+)
+target_link_libraries(
+    mcpe_sdl3
+    PRIVATE
+    mcpe
+)
+target_compile_definitions(
+    mcpe_sdl3
+    PUBLIC
+    SDL3
+)
+
+install(TARGETS mcpe mcpe_sdl3 mcpe_dedicated
     EXPORT mcpeTargets
     INCLUDES DESTINATION include
     LIBRARY DESTINATION lib

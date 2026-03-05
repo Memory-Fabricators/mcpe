@@ -32,6 +32,6 @@
 #endif
 #endif
 
-#ifdef RPI
-#include "main_rpi.h"
+#ifdef SDL3
+#include "main_sdl3.h"
 #endif

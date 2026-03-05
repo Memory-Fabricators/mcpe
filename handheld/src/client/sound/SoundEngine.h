@@ -20,7 +20,7 @@ class Options;
 class SoundEngine {
   static const int SOUND_DISTANCE = 16;
 
-#if defined(ANDROID) && !defined(PRE_ANDROID23) && !defined(RPI)
+#if defined(ANDROID) && !defined(PRE_ANDROID23) && !defined(SDL3)
   SoundSystemSL soundSystem;
 #elif defined(__APPLE__)
   SoundSystemAL soundSystem;

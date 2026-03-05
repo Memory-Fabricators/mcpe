@@ -145,7 +145,7 @@ void LevelRenderer::allChanged() {
     dist = (int)((float)dist * 0.8f);
   LOGI("last: %d, power: %d\n", lastViewDistance, mc->isPowerVR());
 
-#if defined(RPI)
+#if defined(SDL3)
   dist *= 0.6f;
 #endif
 

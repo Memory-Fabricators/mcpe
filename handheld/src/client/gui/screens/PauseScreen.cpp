@@ -64,7 +64,7 @@ void PauseScreen::init() {
   // If Back wasn't pressed, set up additional items (more than Quit to menu
   // and Back to game) here
 
-#if !defined(APPLE_DEMO_PROMOTION) && !defined(RPI)
+#if !defined(APPLE_DEMO_PROMOTION) && !defined(SDL3)
   if (true || !wasBackPaused) {
     if (minecraft->raknetInstance) {
       if (minecraft->raknetInstance->isServer()) {
@@ -136,7 +136,7 @@ void PauseScreen::render(int xm, int ym, float a) {
   //	int br = (int) (255 * col);
 
   //	drawString(font, "Saving level..", 8, height - 16, br << 16 | br << 8 |
-  //br);
+  // br);
   //}
 
   drawCenteredString(font, "Game menu", width / 2, 24, 0xffffff);
@@ -174,7 +174,7 @@ void PauseScreen::buttonClicked(Button *button) {
 
   // if (button->id == bThirdPerson->id) {
   //	minecraft->options.thirdPersonView =
-  //!minecraft->options.thirdPersonView;
+  //! minecraft->options.thirdPersonView;
   // }
 }
 

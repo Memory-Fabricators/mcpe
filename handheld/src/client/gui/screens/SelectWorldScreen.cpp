@@ -106,8 +106,9 @@ void WorldSelectionList::commit() {
 
     std::stringstream ss;
     ss << level.name << "/preview.png";
-    TextureId id = Textures::InvalidId; // minecraft->textures->loadTexture(ss.str(),
-                                        // false);
+    TextureId id =
+        Textures::InvalidId; // minecraft->textures->loadTexture(ss.str(),
+                             // false);
 
     if (id != Textures::InvalidId) {
       _imageNames.push_back(ss.str());
@@ -279,7 +280,7 @@ static char ILLEGAL_FILE_CHARACTERS[] = {'/',  '\n', '\r', '\t', '\0',
 
 void SelectWorldScreen::tick() {
   if (_state == _STATE_CREATEWORLD) {
-#if defined(RPI)
+#if defined(SDL3)
     std::string levelId = getUniqueLevelName("world");
     LevelSettings settings(getEpochTimeS(), GameType::Creative);
     minecraft->selectLevel(levelId, levelId, settings);

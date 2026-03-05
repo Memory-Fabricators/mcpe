@@ -56,7 +56,7 @@ int main(int numArguments, char *pszArgs[]) {
   printf("Level Name: %s\n", aSettings.getLevelName().c_str());
   AppContext appContext;
   appContext.platform = new AppPlatform();
-  App *app = new MAIN_CLASS();
+  App *app = new MAIN_CLASS(nullptr);
   signal(SIGINT, signal_callback_handler);
   g_app = app;
   ((MAIN_CLASS *)g_app)->externalStoragePath = aSettings.getExternalPath();

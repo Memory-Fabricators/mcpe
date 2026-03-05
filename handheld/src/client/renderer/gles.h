@@ -15,7 +15,6 @@
 #include <Windows.h>
 #endif
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_opengles.h>
 
 // #define glFogx(a, b) glFogi(a, b)
 // #define glOrthof(a, b, c, d, e, f) glOrtho(a, b, c, d, e, f)
@@ -48,7 +47,7 @@ void drawArrayVTC_NoState(int bufferId, int vertices, int vertexSize4);
 #endif
 #endif
 
-void glInit();
+void glInit(SDL_Window *window);
 void gluPerspective(GLfloat fovy, GLfloat aspect, GLfloat zNear, GLfloat zFar);
 int glhUnProjectf(float winx, float winy, float winz, float *modelview,
                   float *projection, int *viewport, float *objectCoordinate);
@@ -269,7 +268,7 @@ int glhUnProjectf(float winx, float winy, float winz, float *modelview,
 #ifdef WIN32
 #define glGetProcAddress(a) wglGetProcAddress(a)
 #else
-#define glGetProcAddress(a) (void * (0))
+#define glGetProcAddress(a) (void *(0))
 #endif
 
 #endif /*NET_MINECRAFT_CLIENT_RENDERER__gles_H__ */

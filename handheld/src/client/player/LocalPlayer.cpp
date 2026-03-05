@@ -492,7 +492,7 @@ void LocalPlayer::stopSleepInBed(bool forcefulWakeUp, bool updateLevelList,
 }
 
 void LocalPlayer::openTextEdit(TileEntity *tileEntity) {
-#if !defined(STANDALONE_SERVER) && !defined(RPI)
+#if !defined(STANDALONE_SERVER) && !defined(SDL3)
   if (tileEntity->type == TileEntityType::Sign)
     minecraft->setScreen(new TextEditScreen((SignTileEntity *)tileEntity));
 #endif

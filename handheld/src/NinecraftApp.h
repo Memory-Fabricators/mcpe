@@ -13,7 +13,7 @@ class ExternalFileLevelStorageSource;
 
 class NinecraftApp : public Minecraft {
 public:
-  NinecraftApp();
+  NinecraftApp(SDL_Window *window);
   ~NinecraftApp();
 
   void init();
@@ -39,6 +39,7 @@ private:
   void testCreationAndDestruction();
   void testJoiningAndDestruction();
 #endif /*ANDROID_PUBLISH*/
+  SDL_Window *_window;
 
   bool _verbose;
   int _frames;

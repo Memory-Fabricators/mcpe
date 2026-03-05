@@ -2,6 +2,7 @@
 #include "../../world/entity/Mob.h"
 #include "../Minecraft.h"
 #include "../Options.h"
+#include "Sound.h"
 
 SoundEngine::SoundEngine(float maxDistance)
     : idCounter(0), mc(0), _x(0), _y(0), _z(0), _yRot(0),
@@ -18,7 +19,6 @@ void SoundEngine::init(Minecraft *mc, Options *options) {
     loadLibrary();
   }
 
-#if !defined(PRE_ANDROID23) && !defined(__APPLE__) && !defined(RPI)
   sounds.add("step.cloth", SA_cloth1);
   sounds.add("step.cloth", SA_cloth2);
   sounds.add("step.cloth", SA_cloth3);
@@ -130,15 +130,9 @@ void SoundEngine::init(Minecraft *mc, Options *options) {
   sounds.add("random.eat", SA_eat2);
   sounds.add("random.eat", SA_eat3);
   sounds.add("random.fuse", SA_fuse);
-
-#endif
 }
 
-void SoundEngine::enable(bool status) {
-#if defined(__APPLE__)
-  soundSystem.enable(status);
-#endif
-}
+void SoundEngine::enable(bool status) { soundSystem.enable(status); }
 
 void SoundEngine::updateOptions() {}
 
@@ -214,7 +208,7 @@ void SoundEngine::playUI(const std::string &name, float volume, float pitch) {
     soundSystem.playAt(sound, 0, 0, 0, volume, pitch);
   }
 }
-#elif defined(RPI)
+#elif defined(SDL3)
 void SoundEngine::play(const std::string &name, float x, float y, float z,
                        float volume, float pitch) {}
 void SoundEngine::playUI(const std::string &name, float volume, float pitch) {}

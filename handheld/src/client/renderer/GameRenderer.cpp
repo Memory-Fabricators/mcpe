@@ -208,7 +208,7 @@ void GameRenderer::render(float a) {
       glDisable2(GL_SCISSOR_TEST);
 
     mc->screen->render(xMouse, yMouse, a);
-#ifdef RPI
+#ifdef SDL3
     renderCursor(xMouse, yMouse, mc);
 #endif
     // Screen might have been removed, so check it again
@@ -932,7 +932,7 @@ void GameRenderer::onGraphicsReset() {
 }
 
 void GameRenderer::saveMatrices() {
-#if defined(RPI)
+#if defined(SDL3)
   return;
 #endif
 

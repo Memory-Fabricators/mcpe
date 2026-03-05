@@ -1,7 +1,7 @@
 #include "NinecraftApp.h"
 // #include <EGL/egl.h>
 
-#ifdef RPI
+#ifdef SDL3
 // #define NO_STORAGE
 #endif
 
@@ -52,8 +52,9 @@
 
 bool NinecraftApp::_hasInitedStatics = false;
 
-NinecraftApp::NinecraftApp() : _verbose(true), _lastTickMs(0), _frames(0) {
-#if defined(ANDROID) || defined(__APPLE__) || defined(RPI)
+NinecraftApp::NinecraftApp(SDL_Window *window)
+    : _verbose(true), _window(window), _lastTickMs(0), _frames(0) {
+#if defined(ANDROID) || defined(__APPLE__) || defined(SDL3)
   signal(SIGPIPE, SIG_IGN);
 #endif
 }
@@ -103,7 +104,7 @@ void NinecraftApp::init() {
   _running = false;
 
 #ifndef STANDALONE_SERVER
-  LOGI("This: %p\n", this);
+  Minecraft::options.minecraft->mouseHandler.setWindow(_window);
   screenChooser.setScreen(SCREEN_STARTMENU);
 #else
   user->name = "Server";
