@@ -1,5 +1,5 @@
 #pragma once
-#include "NinecraftApp.h"
+#include "MinecraftApp.h"
 #include "client/renderer/gles.h"
 #include <cassert>
 
@@ -310,7 +310,7 @@ int main(int argc, char **argv) {
   }
   SDL_SetWindowTitle(context.window, "Minecraft - pocket edition");
 
-  NinecraftApp *app = new NinecraftApp(context.window);
+  MinecraftApp *app = new MinecraftApp(context.window);
   std::string storagePath = getenv("HOME");
   storagePath += "/.minecraft/";
   app->externalStoragePath = storagePath;

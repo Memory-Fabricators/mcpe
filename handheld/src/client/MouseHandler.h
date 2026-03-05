@@ -4,6 +4,7 @@
 // package net.minecraft.client;
 
 #include "App.h"
+#include <SDL3/SDL.h>
 
 class ITurnInput;
 

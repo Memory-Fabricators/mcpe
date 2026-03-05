@@ -1,11 +1,9 @@
-#include "NinecraftApp.h"
+#include "MinecraftApp.h"
 // #include <EGL/egl.h>
 
 #ifdef SDL3
 // #define NO_STORAGE
 #endif
-
-#include <errno.h>
 
 #include "platform/input/Mouse.h"
 #include "platform/input/Multitouch.h"
@@ -50,18 +48,26 @@
 #include "client/renderer/EntityTileRenderer.h"
 #endif
 
-bool NinecraftApp::_hasInitedStatics = false;
+bool MinecraftApp::_hasInitedStatics = false;
 
-NinecraftApp::NinecraftApp(SDL_Window *window)
+#ifndef STANDALONE_SERVER
+MinecraftApp::MinecraftApp(SDL_Window *window)
     : _verbose(true), _window(window), _lastTickMs(0), _frames(0) {
 #if defined(ANDROID) || defined(__APPLE__) || defined(SDL3)
   signal(SIGPIPE, SIG_IGN);
 #endif
 }
+#else
+MinecraftApp::MinecraftApp() : _verbose(true), _lastTickMs(0), _frames(0) {
+#if defined(ANDROID) || defined(__APPLE__) || defined(SDL3)
+  signal(SIGPIPE, SIG_IGN);
+#endif
+}
+#endif
 
-NinecraftApp::~NinecraftApp() { teardown(); }
+MinecraftApp::~MinecraftApp() { teardown(); }
 
-void NinecraftApp::init() {
+void MinecraftApp::init() {
   // Global initialization goes here
   Mth::initMth();
 
@@ -112,7 +118,7 @@ void NinecraftApp::init() {
 #endif
 }
 
-void NinecraftApp::teardown() {
+void MinecraftApp::teardown() {
   // Note: Don't tear down statics if we run on Android
   // (we might change this in the future)
 #ifndef ANDROID
@@ -133,9 +139,9 @@ void NinecraftApp::teardown() {
 #endif
 }
 
-void NinecraftApp::update() {
+void MinecraftApp::update() {
   ++_frames;
-
+#ifndef STANDALONE_SERVER
   // Generate Multitouch active pointer list
   Multitouch::commit();
 
@@ -143,12 +149,13 @@ void NinecraftApp::update() {
   // testCreationAndDestruction();
   // testJoiningAndDestruction();
 #endif /*ANDROID_PUBLISH*/
-
+#endif
   Minecraft::update();
 
+#ifndef STANDALONE_SERVER
   swapBuffers();
   Mouse::reset2();
-
+#endif
   // Restart the server if (our modded) RakNet reports an error
   if (level && raknetInstance->isProbablyBroken() &&
       raknetInstance->isServer()) {
@@ -160,7 +167,7 @@ void NinecraftApp::update() {
 #endif
 }
 
-void NinecraftApp::updateStats() {
+void MinecraftApp::updateStats() {
 #ifndef STANDALONE_SERVER
   if (Options::debugGl)
     LOGI("--------------------------------------------\n");
@@ -221,7 +228,7 @@ void NinecraftApp::updateStats() {
 #endif /* STANDALONE_SERVER */
 }
 
-void NinecraftApp::initGLStates() {
+void MinecraftApp::initGLStates() {
 #ifndef STANDALONE_SERVER
   // glShadeModel2(GL_SMOOTH);
   // glClearDepthf(1.0f);
@@ -246,7 +253,7 @@ void NinecraftApp::initGLStates() {
 #endif /* STANDALONE_SERVER */
 }
 
-void NinecraftApp::restartServer() {
+void MinecraftApp::restartServer() {
   if (!level)
     return;
 
@@ -265,7 +272,7 @@ void NinecraftApp::restartServer() {
     netCallback->levelGenerated(level);
 }
 
-bool NinecraftApp::handleBack(bool isDown) {
+bool MinecraftApp::handleBack(bool isDown) {
   if (isGeneratingLevel) {
     return true;
   }
@@ -291,7 +298,7 @@ bool NinecraftApp::handleBack(bool isDown) {
   return false;
 }
 
-void NinecraftApp::onGraphicsReset() {
+void MinecraftApp::onGraphicsReset() {
 #ifndef STANDALONE_SERVER
   initGLStates();
   Tesselator::instance.init();
@@ -304,7 +311,7 @@ void NinecraftApp::onGraphicsReset() {
 
 static int _state = -1;
 static int _stateTicksLeft = 0;
-void NinecraftApp::testCreationAndDestruction() {
+void MinecraftApp::testCreationAndDestruction() {
   if (_state == -1) {
     _stateTicksLeft = 100;
     _state = 0;
@@ -335,7 +342,7 @@ void NinecraftApp::testCreationAndDestruction() {
   }
 }
 
-void NinecraftApp::testJoiningAndDestruction() {
+void MinecraftApp::testJoiningAndDestruction() {
   if (_state == -1) {
     // LightUpdate sz[2] = {	LightUpdate(LightLayer::Block, 0, 0, 0, 1, 1,
     // 1),
@@ -348,15 +355,17 @@ void NinecraftApp::testJoiningAndDestruction() {
   if (_state == 0) {
     if (--_stateTicksLeft <= 0) {
       raknetInstance->clearServerList();
+#ifndef STANDALONE_SERVER
       locateMultiplayer();
       _state = 1;
+#endif
     }
   } else if (_state == 1) {
     if (!raknetInstance->getServerList().empty()) {
       PingedCompatibleServer s = raknetInstance->getServerList().at(0);
       if (s.name.GetLength() > 0) {
-        joinMultiplayer(s);
 #ifndef STANDALONE_SERVER
+        joinMultiplayer(s);
         setScreen(new ProgressScreen());
 #endif
         _state = 2;

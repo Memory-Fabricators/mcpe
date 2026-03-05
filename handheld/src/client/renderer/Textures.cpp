@@ -8,6 +8,7 @@
 
 /*static*/ int Textures::textureChanges = 0;
 /*static*/ bool Textures::MIPMAP = false;
+/*static*/ const TextureId Textures::InvalidId = -1;
 
 Textures::Textures(Options *options_, AppPlatform *platform_)
     : clamp(false), blur(false), options(options_), platform(platform_),
@@ -292,22 +293,26 @@ int Textures::crispBlend(int c0, int c1) {
 //			for (int yy = 0; yy < dynamicTexture.replicate; yy++) {
 //
 //				glTexSubImage2D2(GL_TEXTURE_2D, 0,
-//dynamicTexture.tex % 16 * 16 + xx * 16, dynamicTexture.tex / 16 * 16 + yy *
-//16, 16, 16, GL_RGBA, GL_UNSIGNED_BYTE, pixels); 				if (MIPMAP) { 					for (int level =
-//1; level <= 4; level++) { 						int os = 16 >> (level - 1); 						int s = 16 >> level;
+// dynamicTexture.tex % 16 * 16 + xx * 16, dynamicTexture.tex / 16 * 16 + yy *
+// 16, 16, 16, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+// if (MIPMAP) { 					for (int level = 1;
+// level <= 4; level++) { 						int os =
+// 16 >> (level - 1); 						int s = 16 >>
+// level;
 //
 //						for (int x = 0; x < s; x++)
 //							for (int y = 0; y < s;
-//y++) { 								int c0 = pixels.getInt(((x * 2 + 0) + (y * 2 + 0) * os) * 4); 								int c1 =
-//pixels.getInt(((x * 2 + 1) + (y * 2 + 0) * os) * 4); 								int c2 =
-//pixels.getInt(((x * 2 + 1) + (y * 2 + 1) * os) * 4); 								int c3 =
-//pixels.getInt(((x * 2 + 0) + (y * 2 + 1) * os) * 4); 								int col =
-//smoothBlend(smoothBlend(c0, c1), smoothBlend(c2, c3)); 								pixels.putInt((x + y *
-//s) * 4, col);
+// y++) { 								int c0 =
+// pixels.getInt(((x * 2 + 0) + (y * 2 + 0) * os) * 4);
+// int c1 = pixels.getInt(((x * 2 + 1) + (y * 2 + 0) * os) * 4);
+// int c2 = pixels.getInt(((x * 2 + 1) + (y * 2 + 1) * os) * 4);
+// int c3 = pixels.getInt(((x * 2 + 0) + (y * 2 + 1) * os) * 4);
+// int col = smoothBlend(smoothBlend(c0, c1), smoothBlend(c2, c3));
+// pixels.putInt((x + y * s) * 4, col);
 //							}
 //							glTexSubImage2D2(GL_TEXTURE_2D,
-//level, dynamicTexture.tex % 16 * s, dynamicTexture.tex / 16 * s, s, s,
-//GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+// level, dynamicTexture.tex % 16 * s, dynamicTexture.tex / 16 * s, s, s,
+// GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 //					}
 //				}
 //			}
@@ -322,21 +327,23 @@ int Textures::crispBlend(int c0, int c1) {
 //			pixels.position(0).limit(dynamicTexture.pixels.length);
 //			glBindTexture2(GL_TEXTURE_2D, dynamicTexture.copyTo);
 //			glTexSubImage2D2(GL_TEXTURE_2D, 0, 0, 0, 16, 16,
-//GL_RGBA, GL_UNSIGNED_BYTE, pixels); 			if (MIPMAP) { 				for (int level = 1; level <=
-//4; level++) { 					int os = 16 >> (level - 1); 					int s = 16 >> level;
+// GL_RGBA, GL_UNSIGNED_BYTE, pixels); 			if (MIPMAP) {
+// for (int level = 1; level <= 4; level++) {
+// int os = 16 >> (level - 1); 					int s = 16 >>
+// level;
 //
 //					for (int x = 0; x < s; x++)
 //						for (int y = 0; y < s; y++) {
 //							int c0 =
-//pixels.getInt(((x * 2 + 0) + (y * 2 + 0) * os) * 4); 							int c1 =
-//pixels.getInt(((x * 2 + 1) + (y * 2 + 0) * os) * 4); 							int c2 =
-//pixels.getInt(((x * 2 + 1) + (y * 2 + 1) * os) * 4); 							int c3 =
-//pixels.getInt(((x * 2 + 0) + (y * 2 + 1) * os) * 4); 							int col =
-//smoothBlend(smoothBlend(c0, c1), smoothBlend(c2, c3)); 							pixels.putInt((x + y *
-//s) * 4, col);
+// pixels.getInt(((x * 2 + 0) + (y * 2 + 0) * os) * 4);
+// int c1 = pixels.getInt(((x * 2 + 1) + (y * 2 + 0) * os) * 4);
+// int c2 = pixels.getInt(((x * 2 + 1) + (y * 2 + 1) * os) * 4);
+// int c3 = pixels.getInt(((x * 2 + 0) + (y * 2 + 1) * os) * 4);
+// int col = smoothBlend(smoothBlend(c0, c1), smoothBlend(c2, c3));
+// pixels.putInt((x + y * s) * 4, col);
 //						}
 //						glTexSubImage2D2(GL_TEXTURE_2D,
-//level, 0, 0, s, s, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+// level, 0, 0, s, s, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 //				}
 //			}
 //		}

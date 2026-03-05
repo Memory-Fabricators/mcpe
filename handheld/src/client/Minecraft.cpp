@@ -1263,6 +1263,7 @@ void Minecraft::_reloadInput() {
 //
 // Multiplayer
 //
+#ifndef STANDALONE_SERVER
 void Minecraft::locateMultiplayer() {
   isLookingForMultiplayer = true;
 
@@ -1287,6 +1288,7 @@ bool Minecraft::joinMultiplayer(const PingedCompatibleServer &server) {
   }
   return false;
 }
+#endif
 
 void Minecraft::hostMultiplayer(int port) {
   // Tear down last instance
@@ -1294,13 +1296,11 @@ void Minecraft::hostMultiplayer(int port) {
   delete netCallback;
   netCallback = NULL;
 
-#if !defined(NO_NETWORK)
   netCallback = new ServerSideNetworkHandler(this, raknetInstance);
 #ifdef STANDALONE_SERVER
   raknetInstance->host(user->name, port, 16);
 #else
   raknetInstance->host(user->name, port);
-#endif
 #endif
 }
 

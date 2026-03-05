@@ -1,5 +1,5 @@
 #include "AppPlatform.h"
-#include "NinecraftApp.h"
+#include "MinecraftApp.h"
 #include <iostream>
 #include <signal.h>
 #include <stdio.h>
@@ -12,7 +12,7 @@
 #include "world/level/Level.h"
 #include "world/level/LevelSettings.h"
 
-#define MAIN_CLASS NinecraftApp
+#define MAIN_CLASS MinecraftApp
 static App *g_app = 0;
 static int g_exitCode = 0;
 void signal_callback_handler(int signum) {
@@ -56,7 +56,7 @@ int main(int numArguments, char *pszArgs[]) {
   printf("Level Name: %s\n", aSettings.getLevelName().c_str());
   AppContext appContext;
   appContext.platform = new AppPlatform();
-  App *app = new MAIN_CLASS(nullptr);
+  App *app = new MAIN_CLASS();
   signal(SIGINT, signal_callback_handler);
   g_app = app;
   ((MAIN_CLASS *)g_app)->externalStoragePath = aSettings.getExternalPath();

@@ -61,7 +61,7 @@ private:
 public:
   static bool MIPMAP;
   static int textureChanges;
-  static const TextureId InvalidId = -1;
+  static const TextureId InvalidId;
 
 private:
   TextureMap idMap;

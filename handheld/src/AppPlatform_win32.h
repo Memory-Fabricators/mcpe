@@ -66,7 +66,7 @@ public:
       }
 
       // Hack to get around the broken libpng for windows
-      png_set_read_fn(pngPtr, (voidp)&source, png_funcReadFile);
+      png_set_read_fn(pngPtr, (void *)&source, png_funcReadFile);
 
       png_read_info(pngPtr, infoPtr);
 

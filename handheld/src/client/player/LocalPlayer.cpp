@@ -69,6 +69,7 @@ void LocalPlayer::calculateFlight(float xa, float ya, float za) {
   ya = 0;
   za = za * minecraft->options.flySpeed;
 
+#ifndef STANDALONE_SERVER
 #ifdef ANDROID
   if (Keyboard::isKeyDown(103))
     ya = .2f * minecraft->options.flySpeed;
@@ -79,6 +80,7 @@ void LocalPlayer::calculateFlight(float xa, float ya, float za) {
     ya = .2f * minecraft->options.flySpeed;
   if (Keyboard::isKeyDown(Keyboard::KEY_Q))
     ya = -.2f * minecraft->options.flySpeed;
+#endif
 #endif
 
   flyX = 10 *
@@ -140,16 +142,6 @@ void LocalPlayer::tick() {
       minecraft->raknetInstance->send(packet);
     }
   }
-  /*
-      for (int i = 0; i < 4; ++i) {
-          ItemInstance* a = getArmor(i);
-          if (!a) continue;
-
-          ArmorItem* item = (ArmorItem*) a->getItem();
-
-          printf("armor %d: %d\n", i, a->getAuxValue());
-      }
-  /**/
 
   updateArmorTypeHash();
 #ifndef STANDALONE_SERVER

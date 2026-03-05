@@ -1,9 +1,9 @@
 #include "ParticleEngine.h"
-#include "../../NinecraftApp.h"
-#include "../../world/level/Level.h"
 #include "../renderer/Textures.h"
+#include "MinecraftApp.h"
 #include "Particle.h"
 #include "TerrainParticle.h"
+#include "world/level/Level.h"
 
 ParticleEngine::ParticleEngine(Level *level, Textures *textures)
     : level(level), textures(textures) {

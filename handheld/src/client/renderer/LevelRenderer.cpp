@@ -1357,8 +1357,8 @@ void LevelRenderer::takePicture(TripodCamera *cam, Entity *entity) {
 
   // Save image
   static char filename[256];
-  sprintf(filename, "%s/games/com.mojang/img_%.4d.jpg",
-          mc->externalStoragePath.c_str(), getTimeMs());
+  snprintf(filename, 256, "%s/games/com.mojang/img_%.4d.jpg",
+           mc->externalStoragePath.c_str(), getTimeMs());
 
   mc->platform()->saveScreenshot(filename, mc->width, mc->height);
 }

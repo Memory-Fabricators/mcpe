@@ -1,9 +1,11 @@
 #include "CreatorMode.h"
 #include "../../world/level/Level.h"
 #include "../Minecraft.h"
+#ifndef STANDALONE_SERVER
 #include "../particle/ParticleEngine.h"
-#include "../player/LocalPlayer.h"
 #include "../renderer/LevelRenderer.h"
+#endif
+#include "../player/LocalPlayer.h"
 #include "../sound/SoundEngine.h"
 // #include "../../network/Packet.h"
 #include "../../network/packet/RemoveBlockPacket.h"

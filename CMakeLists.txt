@@ -8,140 +8,44 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(SDL3 REQUIRED IMPORTED_TARGET sdl3)
-pkg_check_modules(GLES1 REQUIRED IMPORTED_TARGET glesv1_cm)
-pkg_check_modules(OpenAL REQUIRED IMPORTED_TARGET openal)
-pkg_check_modules(libpng REQUIRED IMPORTED_TARGET libpng)
+option(BUILD_CLIENT "Build the client" ON)
 
-if(APPLE)
-    execute_process(COMMAND brew --prefix angle
-                    OUTPUT_VARIABLE ANGLE_PREFIX
-                    OUTPUT_STRIP_TRAILING_WHITESPACE
-                    ERROR_QUIET)
-    message(STATUS "ANGLE_PREFIX: ${ANGLE_PREFIX}")
-    if(ANGLE_PREFIX)
-        set(GLES1_INCLUDE_DIRS ${ANGLE_PREFIX}/include)
+find_package(PkgConfig REQUIRED)
+if (BUILD_CLIENT)
+    pkg_check_modules(SDL3 REQUIRED IMPORTED_TARGET sdl3)
+    pkg_check_modules(GLES1 REQUIRED IMPORTED_TARGET glesv1_cm)
+    pkg_check_modules(OpenAL REQUIRED IMPORTED_TARGET openal)
+    pkg_check_modules(libpng REQUIRED IMPORTED_TARGET libpng)
+
+    if(APPLE)
+        execute_process(COMMAND brew --prefix angle
+                        OUTPUT_VARIABLE ANGLE_PREFIX
+                        OUTPUT_STRIP_TRAILING_WHITESPACE
+                        ERROR_QUIET)
+        message(STATUS "ANGLE_PREFIX: ${ANGLE_PREFIX}")
+        if(ANGLE_PREFIX)
+            set(GLES1_INCLUDE_DIRS ${ANGLE_PREFIX}/include)
+        endif()
     endif()
 endif()
 
 set(SOURCES
-    "handheld/src/NinecraftApp.cpp"
+    "handheld/src/client/IConfigListener.cpp"
+    "handheld/src/MinecraftApp.cpp"
     "handheld/src/Performance.cpp"
     "handheld/src/SharedConstants.cpp"
-    "handheld/src/client/IConfigListener.cpp"
-    "handheld/src/client/Minecraft.cpp"
-    "handheld/src/client/MouseHandler.cpp"
-    "handheld/src/client/OptionStrings.cpp"
-    "handheld/src/client/Options.cpp"
-    "handheld/src/client/OptionsFile.cpp"
+    "handheld/src/locale/I18n.cpp"
+    "handheld/src/client/player/LocalPlayer.cpp"
+    "handheld/src/client/player/RemotePlayer.cpp"
     "handheld/src/client/gamemode/CreativeMode.cpp"
     "handheld/src/client/gamemode/CreatorMode.cpp"
     "handheld/src/client/gamemode/GameMode.cpp"
     "handheld/src/client/gamemode/SurvivalMode.cpp"
-    "handheld/src/client/gui/Font.cpp"
-    "handheld/src/client/gui/Gui.cpp"
-    "handheld/src/client/gui/GuiComponent.cpp"
-    "handheld/src/client/gui/Screen.cpp"
-    "handheld/src/client/gui/components/Button.cpp"
-    "handheld/src/client/gui/components/GButton.cpp"
-    "handheld/src/client/gui/components/GuiElement.cpp"
-    "handheld/src/client/gui/components/GuiElementContainer.cpp"
-    "handheld/src/client/gui/components/ImageButton.cpp"
-    "handheld/src/client/gui/components/InventoryPane.cpp"
-    "handheld/src/client/gui/components/ItemPane.cpp"
-    "handheld/src/client/gui/components/LargeImageButton.cpp"
-    "handheld/src/client/gui/components/NinePatch.cpp"
-    "handheld/src/client/gui/components/OptionsGroup.cpp"
-    "handheld/src/client/gui/components/OptionsItem.cpp"
-    "handheld/src/client/gui/components/OptionsPane.cpp"
-    "handheld/src/client/gui/components/RolledSelectionListH.cpp"
-    "handheld/src/client/gui/components/RolledSelectionListV.cpp"
-    "handheld/src/client/gui/components/ScrolledSelectionList.cpp"
-    "handheld/src/client/gui/components/ScrollingPane.cpp"
-    "handheld/src/client/gui/components/Slider.cpp"
-    "handheld/src/client/gui/components/SmallButton.cpp"
-    "handheld/src/client/gui/components/TextBox.cpp"
-    "handheld/src/client/gui/screens/ArmorScreen.cpp"
-    "handheld/src/client/gui/screens/ChatScreen.cpp"
-    "handheld/src/client/gui/screens/ChestScreen.cpp"
-    "handheld/src/client/gui/screens/ChooseLevelScreen.cpp"
-    "handheld/src/client/gui/screens/ConfirmScreen.cpp"
-    "handheld/src/client/gui/screens/DeathScreen.cpp"
-    "handheld/src/client/gui/screens/FurnaceScreen.cpp"
-    "handheld/src/client/gui/screens/InBedScreen.cpp"
-    "handheld/src/client/gui/screens/IngameBlockSelectionScreen.cpp"
-    "handheld/src/client/gui/screens/JoinGameScreen.cpp"
-    "handheld/src/client/gui/screens/OptionsScreen.cpp"
-    "handheld/src/client/gui/screens/PauseScreen.cpp"
-    "handheld/src/client/gui/screens/ProgressScreen.cpp"
-    "handheld/src/client/gui/screens/RenameMPLevelScreen.cpp"
-    "handheld/src/client/gui/screens/ScreenChooser.cpp"
-    "handheld/src/client/gui/screens/SelectWorldScreen.cpp"
-    "handheld/src/client/gui/screens/SimpleChooseLevelScreen.cpp"
-    "handheld/src/client/gui/screens/StartMenuScreen.cpp"
-    "handheld/src/client/gui/screens/TextEditScreen.cpp"
-    "handheld/src/client/gui/screens/UploadPhotoScreen.cpp"
-    "handheld/src/client/gui/screens/crafting/CraftingFilters.cpp"
-    "handheld/src/client/gui/screens/crafting/PaneCraftingScreen.cpp"
-    "handheld/src/client/gui/screens/crafting/StonecutterScreen.cpp"
-    "handheld/src/client/gui/screens/crafting/WorkbenchScreen.cpp"
-    "handheld/src/client/gui/screens/touch/TouchIngameBlockSelectionScreen.cpp"
-    "handheld/src/client/gui/screens/touch/TouchJoinGameScreen.cpp"
-    "handheld/src/client/gui/screens/touch/TouchSelectWorldScreen.cpp"
-    "handheld/src/client/gui/screens/touch/TouchStartMenuScreen.cpp"
-    "handheld/src/client/model/ChickenModel.cpp"
-    "handheld/src/client/model/CowModel.cpp"
-    "handheld/src/client/model/HumanoidModel.cpp"
-    "handheld/src/client/model/PigModel.cpp"
-    "handheld/src/client/model/QuadrupedModel.cpp"
-    "handheld/src/client/model/SheepFurModel.cpp"
-    "handheld/src/client/model/SheepModel.cpp"
-    "handheld/src/client/model/geom/Cube.cpp"
-    "handheld/src/client/model/geom/ModelPart.cpp"
-    "handheld/src/client/model/geom/Polygon.cpp"
-    "handheld/src/client/particle/Particle.cpp"
-    "handheld/src/client/particle/ParticleEngine.cpp"
-    "handheld/src/client/player/LocalPlayer.cpp"
-    "handheld/src/client/player/RemotePlayer.cpp"
-    "handheld/src/client/player/input/KeyboardInput.cpp"
-    "handheld/src/client/player/input/touchscreen/TouchscreenInput.cpp"
-    "handheld/src/client/renderer/Chunk.cpp"
-    "handheld/src/client/renderer/EntityTileRenderer.cpp"
-    "handheld/src/client/renderer/GameRenderer.cpp"
-    "handheld/src/client/renderer/ItemInHandRenderer.cpp"
-    "handheld/src/client/renderer/LevelRenderer.cpp"
-    "handheld/src/client/renderer/RenderChunk.cpp"
-    "handheld/src/client/renderer/RenderList.cpp"
-    "handheld/src/client/renderer/Tesselator.cpp"
-    "handheld/src/client/renderer/Textures.cpp"
-    "handheld/src/client/renderer/TileRenderer.cpp"
-    "handheld/src/client/renderer/culling/Frustum.cpp"
-    "handheld/src/client/renderer/entity/ArrowRenderer.cpp"
-    "handheld/src/client/renderer/entity/ChickenRenderer.cpp"
-    "handheld/src/client/renderer/entity/EntityRenderDispatcher.cpp"
-    "handheld/src/client/renderer/entity/EntityRenderer.cpp"
-    "handheld/src/client/renderer/entity/FallingTileRenderer.cpp"
-    "handheld/src/client/renderer/entity/HumanoidMobRenderer.cpp"
-    "handheld/src/client/renderer/entity/ItemRenderer.cpp"
-    "handheld/src/client/renderer/entity/ItemSpriteRenderer.cpp"
-    "handheld/src/client/renderer/entity/MobRenderer.cpp"
-    "handheld/src/client/renderer/entity/PaintingRenderer.cpp"
-    "handheld/src/client/renderer/entity/PlayerRenderer.cpp"
-    "handheld/src/client/renderer/entity/SheepRenderer.cpp"
-    "handheld/src/client/renderer/entity/TntRenderer.cpp"
-    "handheld/src/client/renderer/entity/TripodCameraRenderer.cpp"
-    "handheld/src/client/renderer/gles.cpp"
-    "handheld/src/client/renderer/ptexture/DynamicTexture.cpp"
-    "handheld/src/client/renderer/tileentity/ChestRenderer.cpp"
-    "handheld/src/client/renderer/tileentity/SignRenderer.cpp"
-    "handheld/src/client/renderer/tileentity/TileEntityRenderDispatcher.cpp"
-    "handheld/src/client/renderer/tileentity/TileEntityRenderer.cpp"
-    "handheld/src/client/sound/Sound.cpp"
-    "handheld/src/client/sound/SoundEngine.cpp"
-    "handheld/src/locale/I18n.cpp"
+    "handheld/src/client/Minecraft.cpp"
+    "handheld/src/client/OptionStrings.cpp"
+    "handheld/src/client/Options.cpp"
+    "handheld/src/client/OptionsFile.cpp"
     "handheld/src/nbt/Tag.cpp"
-    "handheld/src/network/ClientSideNetworkHandler.cpp"
     "handheld/src/network/NATPunchHandler.cpp"
     "handheld/src/network/NetEventCallback.cpp"
     "handheld/src/network/PHPDirectoryServer2.cpp"
@@ -150,11 +54,6 @@ set(SOURCES
     "handheld/src/network/ServerSideNetworkHandler.cpp"
     "handheld/src/network/command/CommandServer.cpp"
     "handheld/src/platform/CThread.cpp"
-    "handheld/src/platform/audio/SoundSystemAL.cpp"
-    "handheld/src/platform/input/Controller.cpp"
-    "handheld/src/platform/input/Keyboard.cpp"
-    "handheld/src/platform/input/Mouse.cpp"
-    "handheld/src/platform/input/Multitouch.cpp"
     "handheld/src/platform/time.cpp"
     "handheld/src/raknet/BitStream.cpp"
     "handheld/src/raknet/CCRakNetSlidingWindow.cpp"
@@ -256,7 +155,6 @@ set(SOURCES
     "handheld/src/server/ServerPlayer.cpp"
     "handheld/src/util/DataIO.cpp"
     "handheld/src/util/Mth.cpp"
-    "handheld/src/util/PerfRenderer.cpp"
     "handheld/src/util/PerfTimer.cpp"
     "handheld/src/util/StringUtils.cpp"
     "handheld/src/world/Direction.cpp"
@@ -371,32 +269,152 @@ set(SOURCES
     "handheld/src/world/phys/HitResult.cpp"
 )
 
-# "handheld/src/main_android.cpp"
-# "handheld/src/main_android_java.cpp"
-# "handheld/src/main_rpi.cpp"
-add_library(mcpe)
-
-if (WIN32)
-    list(APPEND SOURCES "handheld/src/AppPlatform_win32.cpp")
-elseif (APPLE)
-    find_library(FOUNDATION_LIBRARY Foundation)
-    target_link_libraries(
-        mcpe
-        PRIVATE
-        ${FOUNDATION_LIBRARY}
-    )
-
-    list(APPEND SOURCES "handheld/src/world/level/storage/MoveFolder.mm")
-
-endif()
-
-target_sources(
-    mcpe
-    PRIVATE
+add_executable(mcpe_dedicated
+    handheld/src/main_dedicated.cpp
     ${SOURCES}
 )
+target_compile_definitions(
+    mcpe_dedicated
+    PRIVATE
+    STANDALONE_SERVER
+)
+target_include_directories(
+    mcpe_dedicated
+    PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/handheld/src>
+    $<INSTALL_INTERFACE:include>
+)
+target_compile_features(
+    mcpe_dedicated
+    PRIVATE
+    cxx_std_23
+)
+
+add_executable(mcpe_sdl3
+    ${SOURCES}
+    handheld/src/main.cpp
+    "handheld/src/client/gui/Font.cpp"
+    "handheld/src/client/gui/Gui.cpp"
+    "handheld/src/client/gui/GuiComponent.cpp"
+    "handheld/src/client/gui/Screen.cpp"
+    "handheld/src/client/gui/components/Button.cpp"
+    "handheld/src/client/gui/components/GButton.cpp"
+    "handheld/src/client/gui/components/GuiElement.cpp"
+    "handheld/src/client/gui/components/GuiElementContainer.cpp"
+    "handheld/src/client/gui/components/ImageButton.cpp"
+    "handheld/src/client/gui/components/InventoryPane.cpp"
+    "handheld/src/client/gui/components/ItemPane.cpp"
+    "handheld/src/client/gui/components/LargeImageButton.cpp"
+    "handheld/src/client/gui/components/NinePatch.cpp"
+    "handheld/src/client/gui/components/OptionsGroup.cpp"
+    "handheld/src/client/gui/components/OptionsItem.cpp"
+    "handheld/src/client/gui/components/OptionsPane.cpp"
+    "handheld/src/client/gui/components/RolledSelectionListH.cpp"
+    "handheld/src/client/gui/components/RolledSelectionListV.cpp"
+    "handheld/src/client/gui/components/ScrolledSelectionList.cpp"
+    "handheld/src/client/gui/components/ScrollingPane.cpp"
+    "handheld/src/client/gui/components/Slider.cpp"
+    "handheld/src/client/gui/components/SmallButton.cpp"
+    "handheld/src/client/gui/components/TextBox.cpp"
+    "handheld/src/client/gui/screens/ArmorScreen.cpp"
+    "handheld/src/client/gui/screens/ChatScreen.cpp"
+    "handheld/src/client/gui/screens/ChestScreen.cpp"
+    "handheld/src/client/gui/screens/ChooseLevelScreen.cpp"
+    "handheld/src/client/gui/screens/ConfirmScreen.cpp"
+    "handheld/src/client/gui/screens/DeathScreen.cpp"
+    "handheld/src/client/gui/screens/FurnaceScreen.cpp"
+    "handheld/src/client/gui/screens/InBedScreen.cpp"
+    "handheld/src/client/gui/screens/IngameBlockSelectionScreen.cpp"
+    "handheld/src/client/gui/screens/JoinGameScreen.cpp"
+    "handheld/src/client/gui/screens/OptionsScreen.cpp"
+    "handheld/src/client/gui/screens/PauseScreen.cpp"
+    "handheld/src/client/gui/screens/ProgressScreen.cpp"
+    "handheld/src/client/gui/screens/RenameMPLevelScreen.cpp"
+    "handheld/src/client/gui/screens/ScreenChooser.cpp"
+    "handheld/src/client/gui/screens/SelectWorldScreen.cpp"
+    "handheld/src/client/gui/screens/SimpleChooseLevelScreen.cpp"
+    "handheld/src/client/gui/screens/StartMenuScreen.cpp"
+    "handheld/src/client/gui/screens/TextEditScreen.cpp"
+    "handheld/src/client/gui/screens/UploadPhotoScreen.cpp"
+    "handheld/src/client/gui/screens/crafting/CraftingFilters.cpp"
+    "handheld/src/client/gui/screens/crafting/PaneCraftingScreen.cpp"
+    "handheld/src/client/gui/screens/crafting/StonecutterScreen.cpp"
+    "handheld/src/client/gui/screens/crafting/WorkbenchScreen.cpp"
+    "handheld/src/client/gui/screens/touch/TouchIngameBlockSelectionScreen.cpp"
+    "handheld/src/client/gui/screens/touch/TouchJoinGameScreen.cpp"
+    "handheld/src/client/gui/screens/touch/TouchSelectWorldScreen.cpp"
+    "handheld/src/client/gui/screens/touch/TouchStartMenuScreen.cpp"
+    "handheld/src/client/model/ChickenModel.cpp"
+    "handheld/src/client/model/CowModel.cpp"
+    "handheld/src/client/model/HumanoidModel.cpp"
+    "handheld/src/client/model/PigModel.cpp"
+    "handheld/src/client/model/QuadrupedModel.cpp"
+    "handheld/src/client/model/SheepFurModel.cpp"
+    "handheld/src/client/model/SheepModel.cpp"
+    "handheld/src/client/model/geom/Cube.cpp"
+    "handheld/src/client/model/geom/ModelPart.cpp"
+    "handheld/src/client/model/geom/Polygon.cpp"
+    "handheld/src/client/particle/Particle.cpp"
+    "handheld/src/client/particle/ParticleEngine.cpp"
+    "handheld/src/client/player/input/KeyboardInput.cpp"
+    "handheld/src/client/player/input/touchscreen/TouchscreenInput.cpp"
+    "handheld/src/client/renderer/Chunk.cpp"
+    "handheld/src/client/renderer/EntityTileRenderer.cpp"
+    "handheld/src/client/renderer/GameRenderer.cpp"
+    "handheld/src/client/renderer/ItemInHandRenderer.cpp"
+    "handheld/src/client/renderer/LevelRenderer.cpp"
+    "handheld/src/client/renderer/RenderChunk.cpp"
+    "handheld/src/client/renderer/RenderList.cpp"
+    "handheld/src/client/renderer/Tesselator.cpp"
+    "handheld/src/client/renderer/Textures.cpp"
+    "handheld/src/client/renderer/TileRenderer.cpp"
+    "handheld/src/client/renderer/culling/Frustum.cpp"
+    "handheld/src/client/renderer/entity/ArrowRenderer.cpp"
+    "handheld/src/client/renderer/entity/ChickenRenderer.cpp"
+    "handheld/src/client/renderer/entity/EntityRenderDispatcher.cpp"
+    "handheld/src/client/renderer/entity/EntityRenderer.cpp"
+    "handheld/src/client/renderer/entity/FallingTileRenderer.cpp"
+    "handheld/src/client/renderer/entity/HumanoidMobRenderer.cpp"
+    "handheld/src/client/renderer/entity/ItemRenderer.cpp"
+    "handheld/src/client/renderer/entity/ItemSpriteRenderer.cpp"
+    "handheld/src/client/renderer/entity/MobRenderer.cpp"
+    "handheld/src/client/renderer/entity/PaintingRenderer.cpp"
+    "handheld/src/client/renderer/entity/PlayerRenderer.cpp"
+    "handheld/src/client/renderer/entity/SheepRenderer.cpp"
+    "handheld/src/client/renderer/entity/TntRenderer.cpp"
+    "handheld/src/client/renderer/entity/TripodCameraRenderer.cpp"
+    "handheld/src/client/renderer/gles.cpp"
+    "handheld/src/client/renderer/ptexture/DynamicTexture.cpp"
+    "handheld/src/client/renderer/tileentity/ChestRenderer.cpp"
+    "handheld/src/client/renderer/tileentity/SignRenderer.cpp"
+    "handheld/src/client/renderer/tileentity/TileEntityRenderDispatcher.cpp"
+    "handheld/src/client/renderer/tileentity/TileEntityRenderer.cpp"
+    "handheld/src/network/ClientSideNetworkHandler.cpp"
+    "handheld/src/client/MouseHandler.cpp"
+    "handheld/src/client/sound/Sound.cpp"
+    "handheld/src/client/sound/SoundEngine.cpp"
+    "handheld/src/util/PerfRenderer.cpp"
+    "handheld/src/platform/audio/SoundSystemAL.cpp"
+    "handheld/src/platform/input/Controller.cpp"
+    "handheld/src/platform/input/Keyboard.cpp"
+    "handheld/src/platform/input/Mouse.cpp"
+    "handheld/src/platform/input/Multitouch.cpp"
+)
 target_link_libraries(
-    mcpe
+    mcpe_sdl3
+    PRIVATE
+    PkgConfig::GLES1
+    PkgConfig::SDL3
+    PkgConfig::OpenAL
+    PkgConfig::libpng
+)
+target_compile_definitions(
+    mcpe_sdl3
+    PUBLIC
+    SDL3
+)
+target_link_libraries(
+    mcpe_sdl3
     PUBLIC
     PkgConfig::GLES1
     PkgConfig::SDL3
@@ -404,14 +422,14 @@ target_link_libraries(
     PkgConfig::OpenAL
 )
 target_link_directories(
-    mcpe
+    mcpe_sdl3
     PUBLIC
     ${GLES1_LIBRARY_DIRS}
     ${OpenAL_LIBRARY_DIRS}
     ${libpng_LIBRARY_DIRS}
 )
 target_compile_definitions(
-    mcpe
+    mcpe_sdl3
     PUBLIC
     SDL3
     OPENGL_ES
@@ -419,7 +437,7 @@ target_compile_definitions(
     GL_GLEXT_PROTOTYPES=1
 )
 target_include_directories(
-    mcpe
+    mcpe_sdl3
     PUBLIC
     ${GLES1_INCLUDE_DIRS}
     ${SDL3_INCLUDE_DIRS}
@@ -428,40 +446,30 @@ target_include_directories(
     $<INSTALL_INTERFACE:include>
 )
 target_compile_features(
-    mcpe
+    mcpe_sdl3
     PRIVATE
     cxx_std_23
 )
 
-add_executable(mcpe_dedicated
-    handheld/src/main_dedicated.cpp
-)
-target_link_libraries(
-    mcpe_dedicated
-    PRIVATE
-    mcpe
-)
-target_compile_definitions(
-    mcpe_dedicated
-    PRIVATE
-    STANDALONE_SERVER
-)
+if (WIN32)
+    # list(APPEND SOURCES "handheld/src/AppPlatform_win32.cpp")
+elseif (APPLE)
+    find_library(FOUNDATION_LIBRARY Foundation)
+    target_link_libraries(
+        mcpe_sdl3
+        PRIVATE
+        ${FOUNDATION_LIBRARY}
+    )
 
-add_executable(mcpe_sdl3
-    handheld/src/main.cpp
-)
-target_link_libraries(
-    mcpe_sdl3
-    PRIVATE
-    mcpe
-)
-target_compile_definitions(
-    mcpe_sdl3
-    PUBLIC
-    SDL3
-)
+    target_sources(
+        mcpe_sdl3
+        PRIVATE
+        "handheld/src/world/level/storage/MoveFolder.mm"
+    )
+endif()
 
-install(TARGETS mcpe mcpe_sdl3 mcpe_dedicated
+
+install(TARGETS mcpe_sdl3 mcpe_dedicated
     EXPORT mcpeTargets
     INCLUDES DESTINATION include
     LIBRARY DESTINATION lib

@@ -7,14 +7,18 @@
 
 #include "AppPlatform.h"
 #include "platform/log.h"
+#ifndef STANDALONE_SERVER
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengles.h>
+#endif
 
 typedef struct AppContext {
+#ifndef STANDALONE_SERVER
   SDL_Window *window;
   SDL_GLContext context;
-  AppPlatform *platform;
   bool doRender;
+#endif
+  AppPlatform *platform;
 } AppContext;
 
 class App {
@@ -45,7 +49,7 @@ public:
   virtual bool saveState(void **state, int *stateSize) { return false; }
 
   void swapBuffers() {
-#ifndef NO_EGL
+#ifndef STANDALONE_SERVER
     if (_context.doRender)
       SDL_GL_SwapWindow(_context.window);
 #endif

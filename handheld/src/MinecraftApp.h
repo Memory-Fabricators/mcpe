@@ -11,10 +11,15 @@ class Level;
 class LocalPlayer;
 class ExternalFileLevelStorageSource;
 
-class NinecraftApp : public Minecraft {
+class MinecraftApp : public Minecraft {
 public:
-  NinecraftApp(SDL_Window *window);
-  ~NinecraftApp();
+#ifndef STANDALONE_SERVER
+  MinecraftApp(SDL_Window *window);
+#else
+  MinecraftApp();
+#endif
+
+  ~MinecraftApp();
 
   void init();
   void teardown();
@@ -39,7 +44,9 @@ private:
   void testCreationAndDestruction();
   void testJoiningAndDestruction();
 #endif /*ANDROID_PUBLISH*/
+#ifndef STANDALONE_SERVER
   SDL_Window *_window;
+#endif
 
   bool _verbose;
   int _frames;

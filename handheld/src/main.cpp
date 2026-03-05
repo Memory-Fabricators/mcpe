@@ -18,8 +18,8 @@
 #ifdef ANDROID
 #endif
 
-#include "NinecraftApp.h"
-#define MAIN_CLASS NinecraftApp
+#include "MinecraftApp.h"
+#define MAIN_CLASS MinecraftApp
 
 #ifdef _WIN32
 #include "main_win32.h"

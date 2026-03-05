@@ -148,7 +148,7 @@ void ExternalFileLevelStorageSource::renameLevel(
 
   bool couldRename = false;
   if (hasTempDirectory() && isTempFile) {
-#ifdef __APPLE__
+#if defined(__APPLE__) && !defined(STANDALONE_SERVER)
     std::string newFolder = basePath + "/" + levelId;
     moveFolder(oldFolder, newFolder);
     couldRename = (_access(newFolder.c_str(), 0) == 0);
