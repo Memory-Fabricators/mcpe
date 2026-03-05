@@ -1,7 +1,6 @@
 #include "gles.h"
 #include "SDL3/SDL_video.h"
 #include <cmath>
-#include <cstdio>
 
 static const float __glPi = 3.14159265358979323846f;
 

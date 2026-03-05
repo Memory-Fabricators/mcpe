@@ -3,6 +3,7 @@
 
 // package net.minecraft.world.level;
 
+#include <string>
 namespace GameType {
 const int Undefined = -1;
 const int Survival = 0;

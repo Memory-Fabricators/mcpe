@@ -1,3 +1,4 @@
+#include "raknet/RakNetTime.h"
 #if !defined(DEMO_MODE) && !defined(APPLE_DEMO_PROMOTION)
 
 #ifndef NET_MINECRAFT_WORLD_LEVEL_STORAGE__ExternalFileLevelStorage_H__

@@ -13,6 +13,8 @@
 
 #include "../../network/RakNetInstance.h"
 #include "../../network/packet/PlaceBlockPacket.h"
+#include "world/Facing.h"
+#include "world/level/material/Material.h"
 
 class TileItem : public Item {
   typedef Item super;

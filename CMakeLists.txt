@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 4.0)
 
-project(mcpe C CXX ASM)
+project(mcpe C CXX ASM OBJCXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -9,9 +9,9 @@ if (NOT CMAKE_BUILD_TYPE)
 endif()
 
 find_package(SDL3 REQUIRED)
-find_package(OpenAL REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLES1 REQUIRED glesv1_cm)
+pkg_check_modules(OpenAL REQUIRED openal)
 
 set(SOURCES
     "handheld/src/NinecraftApp.cpp"
@@ -129,7 +129,6 @@ set(SOURCES
     "handheld/src/client/sound/SoundEngine.cpp"
     "handheld/src/locale/I18n.cpp"
     "handheld/src/main.cpp"
-    "handheld/src/main_dedicated.cpp"
     "handheld/src/nbt/Tag.cpp"
     "handheld/src/network/ClientSideNetworkHandler.cpp"
     "handheld/src/network/NATPunchHandler.cpp"
@@ -361,23 +360,42 @@ set(SOURCES
     "handheld/src/world/phys/HitResult.cpp"
 )
 
+# "handheld/src/main_android.cpp"
+# "handheld/src/main_android_java.cpp"
+# "handheld/src/main_rpi.cpp"
+add_library(mcpe)
+
 if (WIN32)
     list(APPEND SOURCES "handheld/src/AppPlatform_win32.cpp")
-    # "handheld/src/main_android.cpp"
-    # "handheld/src/main_android_java.cpp"
-    # "handheld/src/main_rpi.cpp"
+elseif (APPLE)
+    find_library(FOUNDATION_LIBRARY Foundation)
+    target_link_libraries(
+        mcpe
+        PRIVATE
+        ${FOUNDATION_LIBRARY}
+    )
+
+    list(APPEND SOURCES "handheld/src/world/level/storage/MoveFolder.mm")
+
 endif()
 
-add_executable(
+target_sources(
     mcpe
+    PRIVATE
     ${SOURCES}
 )
 target_link_libraries(
     mcpe
-    PRIVATE
+    PUBLIC
     ${GLES1_LIBRARIES}
-    ${OPENAL_LIBRARIES}
+    ${OpenAL_LIBRARIES}
     ${SDL3_LIBRARIES}
+)
+target_link_directories(
+    mcpe
+    PUBLIC
+    ${GLES1_LIBRARY_DIRS}
+    ${OpenAL_LIBRARY_DIRS}
 )
 target_compile_definitions(
     mcpe
@@ -386,17 +404,26 @@ target_compile_definitions(
 )
 target_include_directories(
     mcpe
-    PRIVATE
+    PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/handheld/src>
     $<INSTALL_INTERFACE:include>
 )
 target_compile_features(
     mcpe
     PRIVATE
-    cxx_std_26
+    cxx_std_23
 )
 
-install(TARGETS mcpe
+add_executable(mcpe_dedicated
+    handheld/src/main_dedicated.cpp
+)
+target_link_libraries(
+    mcpe_dedicated
+    PRIVATE
+    mcpe
+)
+
+install(TARGETS mcpe mcpe_dedicated
     EXPORT mcpeTargets
     INCLUDES DESTINATION include
     LIBRARY DESTINATION lib

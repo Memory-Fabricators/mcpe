@@ -9,6 +9,7 @@
 #include "../../../util/Random.h"
 #include "../../entity/Mob.h"
 #include "Tile.h"
+#include "world/level/Level.h"
 
 class StairTile : public Tile {
   typedef Tile super;

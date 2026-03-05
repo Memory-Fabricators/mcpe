@@ -4,8 +4,8 @@
 // package net.minecraft.world.entity.item;
 
 #include "../Entity.h"
+#include "world/level/Level.h"
 
-class Level;
 class CompoundTag;
 
 class FallingTile : public Entity {
