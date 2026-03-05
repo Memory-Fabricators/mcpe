@@ -1,0 +1,4 @@
+/build/
+.cache/
+.ruff_cache/
+*.pyc
