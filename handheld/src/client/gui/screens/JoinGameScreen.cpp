@@ -1,8 +1,62 @@
 #include "JoinGameScreen.h"
+#include "../../../network/ClientSideNetworkHandler.h"
 #include "../../../network/RakNetInstance.h"
+#include "../../../platform/input/Keyboard.h"
 #include "../Font.h"
 #include "ProgressScreen.h"
 #include "StartMenuScreen.h"
+#include <cctype>
+#include <cstdlib>
+
+namespace {
+static const int kDefaultPort = 19132;
+
+static std::string trim(const std::string &value) {
+  size_t start = 0;
+  while (start < value.size() &&
+         std::isspace(static_cast<unsigned char>(value[start]))) {
+    ++start;
+  }
+  size_t end = value.size();
+  while (end > start &&
+         std::isspace(static_cast<unsigned char>(value[end - 1]))) {
+    --end;
+  }
+  return value.substr(start, end - start);
+}
+
+static bool isDigits(const std::string &value) {
+  if (value.empty())
+    return false;
+  for (size_t i = 0; i < value.size(); ++i) {
+    if (!std::isdigit(static_cast<unsigned char>(value[i])))
+      return false;
+  }
+  return true;
+}
+
+static bool parseHostPort(const std::string &input, std::string &host,
+                          int &port) {
+  std::string cleaned = trim(input);
+  if (cleaned.empty())
+    return false;
+
+  host = cleaned;
+  port = kDefaultPort;
+
+  size_t colon = cleaned.rfind(':');
+  if (colon != std::string::npos && colon + 1 < cleaned.size()) {
+    std::string portStr = cleaned.substr(colon + 1);
+    if (isDigits(portStr)) {
+      host = cleaned.substr(0, colon);
+      port = std::atoi(portStr.c_str());
+    }
+  }
+
+  host = trim(host);
+  return !host.empty();
+}
+} // namespace
 
 JoinGameScreen::JoinGameScreen()
     : bJoin(2, "Join Game"), bBack(3, "Back"), gamesList(NULL) {
@@ -11,6 +65,22 @@ JoinGameScreen::JoinGameScreen()
 }
 
 JoinGameScreen::~JoinGameScreen() { delete gamesList; }
+
+void JoinGameScreen::connectDirect() {
+  std::string host;
+  int port = kDefaultPort;
+  if (!parseHostPort(directConnectText, host, port))
+    return;
+
+  if (!minecraft->netCallback) {
+    minecraft->netCallback =
+        new ClientSideNetworkHandler(minecraft, minecraft->raknetInstance);
+  }
+
+  minecraft->isLookingForMultiplayer = false;
+  minecraft->raknetInstance->connect(host.c_str(), port);
+  minecraft->setScreen(new ProgressScreen());
+}
 
 void JoinGameScreen::buttonClicked(Button *button) {
   if (button->id == bJoin.id) {
@@ -23,11 +93,16 @@ void JoinGameScreen::buttonClicked(Button *button) {
         bBack.active = false;
         minecraft->setScreen(new ProgressScreen());
       }
+    } else if (!trim(directConnectText).empty()) {
+      bJoin.active = false;
+      bBack.active = false;
+      connectDirect();
     }
     // minecraft->locateMultiplayer();
     // minecraft->setScreen(new JoinGameScreen());
   }
   if (button->id == bBack.id) {
+    minecraft->platform()->hideKeyboard();
     minecraft->cancelLocateMultiplayer();
     minecraft->screenChooser.setScreen(SCREEN_STARTMENU);
   }
@@ -35,10 +110,65 @@ void JoinGameScreen::buttonClicked(Button *button) {
 
 bool JoinGameScreen::handleBackEvent(bool isDown) {
   if (!isDown) {
+    minecraft->platform()->hideKeyboard();
     minecraft->cancelLocateMultiplayer();
     minecraft->screenChooser.setScreen(SCREEN_STARTMENU);
   }
   return true;
+}
+
+void JoinGameScreen::removed() {
+  directConnectFocused = false;
+  minecraft->platform()->hideKeyboard();
+}
+
+void JoinGameScreen::mouseClicked(int x, int y, int buttonNum) {
+  Screen::mouseClicked(x, y, buttonNum);
+  if (buttonNum != MouseAction::ACTION_LEFT)
+    return;
+
+  bool inside = (x >= directConnectX && x <= directConnectX + directConnectW &&
+                 y >= directConnectY && y <= directConnectY + directConnectH);
+  if (inside) {
+    if (!directConnectFocused) {
+      directConnectFocused = true;
+      minecraft->platform()->showKeyboard();
+    }
+  } else if (directConnectFocused) {
+    directConnectFocused = false;
+    minecraft->platform()->hideKeyboard();
+  }
+}
+
+void JoinGameScreen::keyPressed(int eventKey) {
+  if (directConnectFocused) {
+    if (eventKey == Keyboard::KEY_BACKSPACE) {
+      if (!directConnectText.empty()) {
+        directConnectText.erase(directConnectText.size() - 1, 1);
+      }
+      return;
+    }
+    if (eventKey == Keyboard::KEY_RETURN) {
+      if (!trim(directConnectText).empty()) {
+        bJoin.active = false;
+        bBack.active = false;
+        connectDirect();
+      }
+      return;
+    }
+  }
+  Screen::keyPressed(eventKey);
+}
+
+void JoinGameScreen::keyboardNewChar(char inputChar) {
+  if (!directConnectFocused)
+    return;
+
+  if (inputChar >= 32 && inputChar < 127) {
+    if (directConnectText.size() < 128) {
+      directConnectText.push_back(inputChar);
+    }
+  }
 }
 
 bool JoinGameScreen::isIndexValid(int index) {
@@ -81,12 +211,16 @@ void JoinGameScreen::tick() {
     }
   }
 
-  bJoin.active = isIndexValid(gamesList->selectedItem);
+  bJoin.active =
+      isIndexValid(gamesList->selectedItem) || !trim(directConnectText).empty();
 }
 
 void JoinGameScreen::init() {
   buttons.push_back(&bJoin);
   buttons.push_back(&bBack);
+
+  directConnectFocused = false;
+  directConnectText = "";
 
   minecraft->raknetInstance->clearServerList();
   gamesList = new AvailableGamesList(minecraft, width, height);
@@ -110,6 +244,15 @@ void JoinGameScreen::setupPositions() {
   // Center buttons
   bJoin.x = width / 2 - 4 - bJoin.width;
   bBack.x = width / 2 + 4;
+
+  directConnectH = 18;
+  directConnectX = 20;
+  directConnectW = width - 40;
+  directConnectY = yBase - directConnectH - 8;
+
+  if (gamesList) {
+    gamesList->setBounds(24, directConnectY - 6);
+  }
 }
 
 void JoinGameScreen::render(int xm, int ym, float a) {
@@ -122,6 +265,29 @@ void JoinGameScreen::render(int xm, int ym, float a) {
   if (hasNetwork)
     gamesList->render(xm, ym, a);
   Screen::render(xm, ym, a);
+
+  const int fieldLeft = directConnectX;
+  const int fieldRight = directConnectX + directConnectW;
+  const int fieldTop = directConnectY;
+  const int fieldBottom = directConnectY + directConnectH;
+
+  fill(fieldLeft, fieldTop, fieldRight, fieldBottom, 0x80000000);
+  fill(fieldLeft - 1, fieldTop - 1, fieldLeft, fieldBottom + 1, 0xffa0a0a0);
+  fill(fieldRight, fieldTop - 1, fieldRight + 1, fieldBottom + 1, 0xffa0a0a0);
+  fill(fieldLeft, fieldTop - 1, fieldRight, fieldTop, 0xffa0a0a0);
+  fill(fieldLeft, fieldBottom, fieldRight, fieldBottom + 1, 0xffa0a0a0);
+
+  std::string displayText = directConnectText;
+  int textColor = 0xffffffff;
+  if (displayText.empty()) {
+    displayText = "Direct connect (host:port)";
+    textColor = 0xff909090;
+  } else if (directConnectFocused && ((int)(getTimeS() * 2) % 2 == 0)) {
+    displayText += "_";
+  }
+
+  drawString(minecraft->font, displayText, fieldLeft + 4, fieldTop + 4,
+             textColor);
 
   if (hasNetwork) {
 #ifdef SDL3

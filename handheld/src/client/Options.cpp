@@ -5,6 +5,9 @@
 #include "OptionStrings.h"
 #include <cmath>
 #include <sstream>
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
 /*static*/
 bool Options::debugGl = false;
 
@@ -54,14 +57,12 @@ void Options::initDefaultValues() {
   keyJump = KeyMapping("key.jump", Keyboard::KEY_SPACE);
   keyBuild = KeyMapping("key.inventory", Keyboard::KEY_E);
   keySneak = KeyMapping("key.sneak", Keyboard::KEY_LSHIFT);
-#ifndef SDL3
   keyCraft = KeyMapping("key.crafting", Keyboard::KEY_Q);
   keyDrop = KeyMapping("key.drop", Keyboard::KEY_Q);
   keyChat = KeyMapping("key.chat", Keyboard::KEY_T);
   keyFog = KeyMapping("key.fog", Keyboard::KEY_F);
   keyDestroy = KeyMapping("key.destroy", 88); // @todo @fix
   keyUse = KeyMapping("key.use", Keyboard::KEY_U);
-#endif
 
   // const int Unused = 99999;
   keyMenuNext = KeyMapping("key.menu.next", 40);
@@ -92,14 +93,14 @@ void Options::initDefaultValues() {
 //	for now, then to have it spread all around the game code (even if
 //	it would be slightly better performance with it inlined. Should
 //  probably create separate subclasses (or read from file). @fix @todo.
-#if defined(ANDROID) || defined(__APPLE__) || defined(SDL3)
+#if defined(ANDROID) ||                                                        \
+    (defined(__APPLE__) && defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE)
   viewDistance = 2;
   thirdPersonView = false;
   useMouseForDigging = false;
   fancyGraphics = false;
 
-// renderDebug = true;
-#if !defined(SDL3)
+  // renderDebug = true;
   keyUp.key = 19;
   keyDown.key = 20;
   keyLeft.key = 21;
@@ -114,10 +115,8 @@ void Options::initDefaultValues() {
   keyMenuOk.key = 23;
   keyMenuCancel.key = 4;
 #endif
-#endif
 
 #if defined(SDL3)
-  username = "StevePi";
   sensitivity *= 0.4f;
   useMouseForDigging = true;
 #endif

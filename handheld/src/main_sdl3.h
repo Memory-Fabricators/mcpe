@@ -30,6 +30,32 @@ class AppPlatform_SDL3 : public AppPlatform {
 public:
   bool isTouchscreen() { return false; }
 
+  BinaryBlob readAssetFile(const std::string &filename) override {
+    const char *prefixes[] = {"data/", "../data/", "../../data/"};
+    for (size_t i = 0; i < sizeof(prefixes) / sizeof(prefixes[0]); ++i) {
+      std::string path = std::string(prefixes[i]) + filename;
+      std::ifstream file(path.c_str(), std::ios::binary);
+      if (!file)
+        continue;
+
+      file.seekg(0, std::ios::end);
+      std::streamsize size = file.tellg();
+      if (size <= 0)
+        continue;
+      file.seekg(0, std::ios::beg);
+
+      unsigned char *data = new unsigned char[(size_t)size];
+      if (!file.read(reinterpret_cast<char *>(data), size)) {
+        delete[] data;
+        continue;
+      }
+
+      return BinaryBlob(data, (unsigned int)size);
+    }
+
+    return BinaryBlob();
+  }
+
   TextureData loadTexture(const std::string &filename_, bool textureFolder) {
     TextureData out;
 
@@ -161,6 +187,8 @@ static unsigned char transformKey(int key) {
     return Keyboard::KEY_SPACE;
   if (key == SDLK_RETURN)
     return 13; // Keyboard::KEY_RETURN;
+  if (key == SDLK_BACKSPACE)
+    return Keyboard::KEY_BACKSPACE;
   if (key == SDLK_ESCAPE)
     return Keyboard::KEY_ESCAPE;
   if (key == SDLK_TAB)
@@ -194,6 +222,18 @@ int handleEvents(App *app, AppContext *state) {
       unsigned char transformed = transformKey(key);
       if (transformed)
         Keyboard::feed(transformed, 0);
+      continue;
+    }
+
+    if (SDL_EVENT_TEXT_INPUT == event.type) {
+      const char *text = event.text.text;
+      if (text) {
+        for (const char *p = text; *p; ++p) {
+          if (*p != '\r' && *p != '\n') {
+            Keyboard::feedText(*p);
+          }
+        }
+      }
       continue;
     }
 
@@ -309,6 +349,7 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
   SDL_SetWindowTitle(context.window, "Minecraft - pocket edition");
+  SDL_StartTextInput(context.window);
 
   MinecraftApp *app = new MinecraftApp(context.window);
   std::string storagePath = getenv("HOME");

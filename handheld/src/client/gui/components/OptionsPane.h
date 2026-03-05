@@ -30,6 +30,9 @@ public:
                         std::string label, const Options::Option *option,
                         const std::vector<int> &stepVec);
   void setupPositions();
+
+private:
+  std::vector<Slider *> sliders;
 };
 
 #endif /*ITEMPANE_H__*/

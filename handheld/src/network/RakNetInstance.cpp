@@ -121,18 +121,7 @@ void RakNetInstance::stopPingForHosts() {
 
 const ServerList &RakNetInstance::getServerList() { return availableServers; }
 
-void RakNetInstance::clearServerList() {
-  availableServers.clear();
-  /*
-  for (int i = 0; i < 20; ++i) {
-          PingedCompatibleServer ps;
-          ps.isSpecial = false;
-          ps.name = "Fake-Real";
-          ps.address.FromString("192.168.1.236|19132");
-          availableServers.push_back(ps);
-  }
-  */
-}
+void RakNetInstance::clearServerList() { availableServers.clear(); }
 
 RakNet::RakPeerInterface *RakNetInstance::getPeer() { return rakPeer; }
 

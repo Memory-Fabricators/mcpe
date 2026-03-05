@@ -7,6 +7,7 @@
 #include "../components/Button.h"
 #include "../components/ScrolledSelectionList.h"
 #include "../components/SmallButton.h"
+#include <string>
 
 class JoinGameScreen;
 
@@ -20,6 +21,12 @@ public:
   AvailableGamesList(Minecraft *_minecraft, int _width, int _height)
       : ScrolledSelectionList(_minecraft, _width, _height, 24, _height - 30,
                               28) {}
+
+  void setBounds(int top, int bottom) {
+    y0 = (float)top;
+    y1 = (float)bottom;
+    capYPosition();
+  }
 
 protected:
   virtual int getNumberOfItems() { return (int)copiedServerList.size(); }
@@ -56,10 +63,24 @@ public:
 
   bool isInGameScreen();
 
+protected:
+  virtual void keyPressed(int eventKey);
+  virtual void keyboardNewChar(char inputChar);
+  virtual void mouseClicked(int x, int y, int buttonNum);
+  virtual void removed();
+
 private:
+  void connectDirect();
+
   Button bJoin;
   Button bBack;
   AvailableGamesList *gamesList;
+  std::string directConnectText;
+  bool directConnectFocused;
+  int directConnectX;
+  int directConnectY;
+  int directConnectW;
+  int directConnectH;
 };
 
 #endif /*NET_MINECRAFT_CLIENT_GUI_SCREENS__JoinGameScreen_H__*/
