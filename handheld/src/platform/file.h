@@ -1,6 +1,9 @@
 #ifndef FILE_H__
 #define FILE_H__
 
+#include <cstdio>
+#include <string>
+
 bool DeleteDirectory(const std::string &, bool noRecycleBin = true);
 
 #ifdef WIN32
@@ -36,7 +39,6 @@ bool DeleteDirectory(const std::string &dir, bool noRecycleBin /*true*/) {
   return (ret == 0);
 }
 #else
-#include <cstdio>
 #include <dirent.h>
 
 bool DeleteDirectory(const std::string &d, bool noRecycleBin /*true*/) {

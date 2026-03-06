@@ -22,7 +22,19 @@ using namespace RakNet;
 // ****************************************************** PUBLIC METHODS
 // ******************************************************
 
-CCRakNetSlidingWindow::CCRakNetSlidingWindow() {}
+CCRakNetSlidingWindow::CCRakNetSlidingWindow() {
+  RTT = UNSET_TIME_US;
+  MAXIMUM_MTU_INCLUDING_UDP_HEADER = 0;
+  cwnd = 0.0;
+  ssThresh = 0.0;
+  oldestUnsentAck = 0;
+  nextDatagramSequenceNumber = 0;
+  nextCongestionControlBlock = 0;
+  backoffThisBlock = false;
+  speedUpThisBlock = false;
+  expectedNextSequenceNumber = 0;
+  _isContinuousSend = false;
+}
 // ----------------------------------------------------------------------------------------------------------------------------
 CCRakNetSlidingWindow::~CCRakNetSlidingWindow() {}
 // ----------------------------------------------------------------------------------------------------------------------------
