@@ -10,7 +10,7 @@ LOCAL_SRC_FILES := ../../../src/main.cpp \
                    ../../../src/platform/input/Mouse.cpp \
                    ../../../src/platform/input/Multitouch.cpp \
                    ../../../src/platform/time.cpp \
-                   ../../../src/platform/CThread.cpp \
+
 ../../../src/NinecraftApp.cpp \
 ../../../src/Performance.cpp \
 ../../../src/SharedConstants.cpp \
@@ -247,4 +247,3 @@ include $(BUILD_SHARED_LIBRARY)
 
 # NOTE: environment var NDK_MODULE_PATH needs to point to lib_projects folder
 $(call import-module, raknet/jni)
-

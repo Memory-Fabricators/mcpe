@@ -60,7 +60,6 @@ set(SOURCES
     "handheld/src/network/RakNetInstance.cpp"
     "handheld/src/network/ServerSideNetworkHandler.cpp"
     "handheld/src/network/command/CommandServer.cpp"
-    "handheld/src/platform/CThread.cpp"
     "handheld/src/platform/time.cpp"
     "handheld/src/raknet/BitStream.cpp"
     "handheld/src/raknet/CCRakNetSlidingWindow.cpp"

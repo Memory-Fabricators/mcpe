@@ -14,6 +14,9 @@
 #endif
 // #include "../network/RakNetInstance.h"
 #include "../world/phys/HitResult.h"
+#include <atomic>
+#include <memory>
+#include <thread>
 
 class User;
 class Level;
@@ -28,7 +31,7 @@ class Entity;
 class ICreator;
 class GameMode;
 class Textures;
-class CThread;
+
 class SoundEngine;
 class Screen;
 class Font;
@@ -182,7 +185,7 @@ public:
 #ifndef STANDALONE_SERVER
   Gui gui;
 #endif
-  CThread *generateLevelThread;
+  std::unique_ptr<std::thread> generateLevelThread;
   Screen *screen;
   static int customDebugId;
 
@@ -207,8 +210,8 @@ public:
 protected:
   Timer timer;
   // @note @attn @warn: this is dangerous as fuck!
-  volatile bool isGeneratingLevel;
-  bool _hasSignaledGeneratingLevelFinished;
+  std::atomic<bool> isGeneratingLevel;
+  std::atomic<bool> _hasSignaledGeneratingLevelFinished;
 
   LevelStorageSource *storageSource;
   bool _running;

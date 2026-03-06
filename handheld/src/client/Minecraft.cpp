@@ -1,4 +1,5 @@
 #include "Minecraft.h"
+#include <system_error>
 
 #if defined(__APPLE__)
 #include <TargetConditionals.h>
@@ -38,11 +39,12 @@
 #include "../AppPlatform.h"
 #include "../LicenseCodes.h"
 #include "../Performance.h"
-#include "../platform/CThread.h"
 #include "../platform/input/Mouse.h"
 #include "../util/PerfRenderer.h"
 #include "../util/PerfTimer.h"
 #include "player/input/MouseBuildInput.h"
+#include <chrono>
+#include <thread>
 
 #include "../world/Facing.h"
 
@@ -122,9 +124,8 @@ const char *Minecraft::progressMessages[] = {
 int Minecraft::customDebugId = Minecraft::CDI_NONE;
 
 #if defined(_MSC_VER)
-#pragma warning(                                                               \
-    disable                                                                    \
-    : 4355) // 'this' pointer in initialization list which is perfectly legal
+#pragma warning(disable : 4355) // 'this' pointer in initialization list which
+                                // is perfectly legal
 #endif
 
 bool Minecraft::useAmbientOcclusion = false;
@@ -153,7 +154,7 @@ Minecraft::Minecraft()
       scheduledScreen(NULL), hasScheduledScreen(false), soundEngine(NULL),
 #endif
       ticks(0), isGeneratingLevel(false),
-      _hasSignaledGeneratingLevelFinished(true), generateLevelThread(NULL),
+      _hasSignaledGeneratingLevelFinished(true), generateLevelThread(nullptr),
       progressStagePercentage(0), progressStageStatusId(0),
       isLookingForMultiplayer(false),
       _licenseId(LicenseCodes::WAIT_PLATFORM_NOT_READY), inputHolder(0),
@@ -183,6 +184,10 @@ Minecraft::Minecraft()
 }
 
 Minecraft::~Minecraft() {
+  if (generateLevelThread && generateLevelThread->joinable()) {
+    generateLevelThread->join();
+    generateLevelThread.reset();
+  }
   delete netCallback;
   delete raknetInstance;
 #ifndef STANDALONE_SERVER
@@ -264,7 +269,7 @@ void Minecraft::setLevel(Level *level, const std::string &message /* ="" */,
       }
     }
     this->level = level;
-    _hasSignaledGeneratingLevelFinished = false;
+    _hasSignaledGeneratingLevelFinished.store(false, std::memory_order_release);
 #ifdef STANDALONE_SERVER
     const bool threadedLevelCreation = false;
 #else
@@ -274,11 +279,18 @@ void Minecraft::setLevel(Level *level, const std::string &message /* ="" */,
     if (threadedLevelCreation) {
       // Threaded
       // "Lock"
-      isGeneratingLevel = true;
-      generateLevelThread = new CThread(Minecraft::prepareLevel_tspawn, this);
+      isGeneratingLevel.store(true, std::memory_order_release);
+      try {
+        generateLevelThread.reset(new std::thread(
+            &Minecraft::generateLevel, this, std::string(message), level));
+      } catch (const std::system_error &) {
+        isGeneratingLevel.store(false, std::memory_order_release);
+        generateLevelThread.reset();
+        generateLevel(message, level);
+      }
     } else {
       // Non-threaded
-      generateLevel("Currently not used", level);
+      generateLevel(message, level);
     }
   } else {
     player = NULL;
@@ -289,10 +301,11 @@ void Minecraft::setLevel(Level *level, const std::string &message /* ="" */,
 }
 
 void Minecraft::leaveGame(bool renameLevel /*=false*/) {
-  if (isGeneratingLevel || !_hasSignaledGeneratingLevelFinished)
+  if (isGeneratingLevel.load(std::memory_order_acquire) ||
+      !_hasSignaledGeneratingLevelFinished.load(std::memory_order_acquire))
     return;
 
-  isGeneratingLevel = false;
+  isGeneratingLevel.store(false, std::memory_order_release);
   bool saveLevel = level && (!level->isClientSide || renameLevel);
 
   raknetInstance->disconnect();
@@ -442,7 +455,7 @@ void Minecraft::update() {
     tick(i, toTick - 1);
 
   TIMER_POP_PUSH("updatelights");
-  if (level && !isGeneratingLevel) {
+  if (level && !isGeneratingLevel.load(std::memory_order_acquire)) {
     level->updateLights();
   }
   TIMER_POP();
@@ -456,7 +469,7 @@ void Minecraft::update() {
   gameRenderer->render(timer.a);
   TIMER_POP();
 #else
-  CThread::sleep(1);
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
 #endif
 #ifndef STANDALONE_SERVER
   Multitouch::resetThisUpdate();
@@ -512,12 +525,13 @@ void Minecraft::tick(int nTick, int maxTick) {
   // Ongoing level generation in a (perhaps) different thread. When it's
   // ready, _levelGenerated() is called once and any threads are deleted.
   //
-  if (isGeneratingLevel) {
+  if (isGeneratingLevel.load(std::memory_order_acquire)) {
     return;
-  } else if (!_hasSignaledGeneratingLevelFinished) {
-    if (generateLevelThread) {
-      delete generateLevelThread;
-      generateLevelThread = NULL;
+  } else if (!_hasSignaledGeneratingLevelFinished.load(
+                 std::memory_order_acquire)) {
+    if (generateLevelThread && generateLevelThread->joinable()) {
+      generateLevelThread->join();
+      generateLevelThread.reset();
     }
     _levelGenerated();
   }
@@ -1322,7 +1336,7 @@ void Minecraft::generateLevel(const std::string &message, Level *level) {
   s.print("Level generated: ");
 
   // "Unlock"
-  isGeneratingLevel = false;
+  isGeneratingLevel.store(false, std::memory_order_release);
 }
 
 void Minecraft::_levelGenerated() {
@@ -1378,7 +1392,7 @@ void Minecraft::_levelGenerated() {
   // Hack to (hopefully) get the players to show (note: in LevelListener
   // instead, since adding yourself always generates a entityAdded)
   // EntityRenderDispatcher::getInstance()->onGraphicsReset();
-  _hasSignaledGeneratingLevelFinished = true;
+  _hasSignaledGeneratingLevelFinished.store(true, std::memory_order_release);
 }
 
 Player *Minecraft::respawnPlayer(int playerId) {
@@ -1448,7 +1462,7 @@ const char *Minecraft::getProgressMessage() {
 }
 
 bool Minecraft::isLevelGenerated() {
-  return level != NULL && !isGeneratingLevel;
+  return level != NULL && !isGeneratingLevel.load(std::memory_order_acquire);
 }
 
 LevelStorageSource *Minecraft::getLevelSource() { return storageSource; }
