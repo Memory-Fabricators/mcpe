@@ -64,12 +64,12 @@ void InventoryPane::renderBatch(std::vector<GridItem> &items, float alpha) {
 
   t.beginOverride();
   t.colorABGR(0xffffffff);
+  mc->textures->loadAndBindTexture("gui/gui.png");
   for (unsigned int i = 0; i < items.size(); ++i) {
     GridItem &item = items[i];
     blit(item.xf, item.yf, 200, 46, (float)itemBbox.w, (float)itemBbox.h, 16,
         16);
   }
-  mc->textures->loadAndBindTexture("gui/gui.png");
   t.endOverrideAndDraw();
 
   GridItem *marked = NULL;

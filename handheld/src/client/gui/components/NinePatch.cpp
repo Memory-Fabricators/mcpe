@@ -1,5 +1,8 @@
 #include "NinePatch.h"
 
+#include "../../../App.h"
+#include "../../renderer/gles.h"
+
 NinePatchDescription::NinePatchDescription(float x, float y, float x1, float x2,
     float x3, float y1, float y2, float y3, float w, float e, float n, float s)
     : u0(x), u1(x + x1), u2(x + x2), u3(x + x3), v0(y), v1(y + y1), v2(y + y2),
@@ -66,6 +69,41 @@ void NinePatchLayer::setSize(float w, float h) {
 
 void NinePatchLayer::draw(Tesselator &t, float x, float y) {
   textures->loadAndBindTexture(imageName);
+  float r = 1.0f;
+  float g = 1.0f;
+  float b = 1.0f;
+  float a = 1.0f;
+  glesGetTrackedColor4f(r, g, b, a);
+
+  bool queuedAll = true;
+  for (int i = 0, mask = 1; i < 9; ++i, mask += mask) {
+    if ((mask & excluded) != 0) {
+      continue;
+    }
+
+    const CachedQuad &q = quads[i];
+    GraphicsQuad quad;
+    quad.x = x + q.x0;
+    quad.y = y + q.y0;
+    quad.width = q.x1 - q.x0;
+    quad.height = q.y1 - q.y0;
+    quad.u0 = q.u0;
+    quad.v0 = q.v0;
+    quad.u1 = q.u1;
+    quad.v1 = q.v1;
+    quad.topLeft = {r, g, b, a};
+    quad.topRight = quad.topLeft;
+    quad.bottomRight = quad.topLeft;
+    quad.bottomLeft = quad.topLeft;
+    if (!tryDrawQuad(quad)) {
+      queuedAll = false;
+      break;
+    }
+  }
+  if (queuedAll) {
+    return;
+  }
+
   t.begin();
   t.addOffset(x, y, 0);
   for (int i = 0, b = 1; i < 9; ++i, b += b)

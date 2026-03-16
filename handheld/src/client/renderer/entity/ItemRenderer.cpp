@@ -6,6 +6,7 @@
 #include "../../../world/item/ItemInstance.h"
 #include "../../../world/level/tile/Tile.h"
 #include "../../gui/Font.h"
+#include "../../gui/GuiComponent.h"
 #include "../../gui/Gui.h"
 #include "../ItemInHandRenderer.h"
 #include "../Tesselator.h"
@@ -247,25 +248,31 @@ void ItemRenderer::renderGuiItem(Font *font, Textures *textures,
 
   textures->loadAndBindTexture("gui/gui_blocks.png");
   float u0, u1, v0, v1;
+  const float texel = 0.5f / 512.0f;
   if (i < 128) {
     const float P = 48.0f / 512.0f;
-    u0 = (float)(i % 10) * P;
-    v0 = (float)(i / 10) * P;
-    u1 = u0 + P;
-    v1 = v0 + P;
+    u0 = (float)(i % 10) * P + texel;
+    v0 = (float)(i / 10) * P + texel;
+    u1 = (float)(i % 10 + 1) * P - texel;
+    v1 = (float)(i / 10 + 1) * P - texel;
   } else {
     i -= 128;
     const float P = 16.0f / 512.0f;
-    u0 = float(i & 31) * P;
-    v0 = 27 * P + float(i >> 5) * P; // 27 "icon" rows down
-    u1 = u0 + P;
-    v1 = v0 + P;
+    u0 = float(i & 31) * P + texel;
+    v0 = 27 * P + float(i >> 5) * P + texel; // 27 "icon" rows down
+    u1 = float((i & 31) + 1) * P - texel;
+    v1 = 27 * P + float((i >> 5) + 1) * P - texel;
+  }
+
+  const int color = item->count > 0 ? 0xffffffff : 0x60ffffff;
+  if (GuiComponent::drawTexturedQuad(x, y, w, h, u0, v0, u1, v1, color)) {
+    return;
   }
 
   const float blitOffset = 0;
   Tesselator &t = Tesselator::instance;
   t.begin();
-  t.colorABGR(item->count > 0 ? 0xffffffff : 0x60ffffff);
+  t.colorABGR(color);
   t.vertexUV(x, y + h, blitOffset, u0, v1);
   t.vertexUV(x + w, y + h, blitOffset, u1, v1);
   t.vertexUV(x + w, y, blitOffset, u1, v0);
@@ -282,21 +289,21 @@ void ItemRenderer::renderGuiItemDecorations(
         (float)item->getDamageValue() * 13.0f / (float)item->getMaxDamage());
     int cc = (int)std::floor(255.5f -
         (float)item->getDamageValue() * 255.0f / (float)item->getMaxDamage());
-    // glDisable(GL_LIGHTING);
-    // glDisable(GL_DEPTH_TEST);
-    // glDisable(GL_TEXTURE_2D);
-
-    Tesselator &t = Tesselator::instance;
 
     int ca = (255 - cc) << 16 | (cc) << 8;
     int cb = ((255 - cc) / 4) << 16 | (255 / 4) << 8;
+    if (GuiComponent::drawQuad(x + 2, y + 13, 13, 1, 0xff000000) &&
+        GuiComponent::drawQuad(x + 2, y + 13, 12, 1, 0xff000000 | cb) &&
+        GuiComponent::drawQuad(x + 2, y + 13, p, 1, 0xff000000 | ca)) {
+      glColor4f2(1, 1, 1, 1);
+      return;
+    }
+
+    Tesselator &t = Tesselator::instance;
     fillRect(t, x + 2, y + 13, 13, 1, 0x000000);
     fillRect(t, x + 2, y + 13, 12, 1, cb);
     fillRect(t, x + 2, y + 13, p, 1, ca);
 
-    // glEnable(GL_TEXTURE_2D);
-    // glEnable(GL_LIGHTING);
-    // glEnable(GL_DEPTH_TEST);
     glColor4f2(1, 1, 1, 1);
   }
 }
@@ -362,6 +369,10 @@ void ItemRenderer::blit(
   float blitOffset = 0;
   const float us = 1 / 256.0f;
   const float vs = 1 / 256.0f;
+  if (GuiComponent::drawTexturedQuad(
+          x, y, w, h, sx * us, sy * vs, (sx + w) * us, (sy + h) * vs)) {
+    return;
+  }
   Tesselator &t = Tesselator::instance;
   t.begin();
   t.vertexUV(x, y + h, blitOffset, sx * us, (sy + h) * vs);

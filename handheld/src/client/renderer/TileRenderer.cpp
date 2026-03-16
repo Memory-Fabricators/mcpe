@@ -53,10 +53,6 @@ bool TileRenderer::tesselateBlockInWorld(
   float g11 = c11 * g;
   float b11 = c11 * b;
 
-  if (tt == (Tile *)Tile::grass) {
-    r = g = b = 1.0f;
-  }
-
   float r10 = c10 * r;
   float r2 = c2 * r;
   float r3 = c3 * r;
@@ -2252,6 +2248,12 @@ void TileRenderer::renderGuiTile(Tile *tile, int data) {
   Tesselator &t = Tesselator::instance;
 
   int shape = tile->getRenderShape();
+
+  if (shape != Tile::SHAPE_BLOCK && shape != Tile::SHAPE_CROSS_TEXTURE &&
+      shape != Tile::SHAPE_CACTUS && shape != Tile::SHAPE_STAIRS &&
+      shape != Tile::SHAPE_FENCE && shape != Tile::SHAPE_FENCE_GATE) {
+    return;
+  }
 
   if (shape == Tile::SHAPE_BLOCK) {
     tile->updateDefaultShape();

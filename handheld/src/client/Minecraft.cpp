@@ -1149,7 +1149,7 @@ void Minecraft::init() {
 
   LOGI("IS TOUCHSCREEN? %d\n", options.useTouchScreen);
 
-  textures = new Textures(&options, platform());
+  textures = new Textures(&options, platform(), graphics());
   textures->addDynamicTexture(new WaterTexture());
   textures->addDynamicTexture(new WaterSideTexture());
   gui.texturesLoaded(textures);

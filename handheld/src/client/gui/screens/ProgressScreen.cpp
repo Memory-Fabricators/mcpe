@@ -1,8 +1,6 @@
 #include "ProgressScreen.h"
 #include "../../../SharedConstants.h"
 #include "../../Minecraft.h"
-#include "../../renderer/Tesselator.h"
-#include "../../renderer/Textures.h"
 #include "../Font.h"
 #include "../Gui.h"
 #include "DisconnectionScreen.h"
@@ -15,19 +13,8 @@ void ProgressScreen::render(int xm, int ym, float a) {
     return;
   }
 
-  Tesselator &t = Tesselator::instance;
   renderBackground();
-
-  minecraft->textures->loadAndBindTexture("gui/background.png");
-
-  const float s = 32;
-  t.begin();
-  t.color(0x404040);
-  t.vertexUV(0, (float)height, 0, 0, height / s);
-  t.vertexUV((float)width, (float)height, 0, width / s, height / s);
-  t.vertexUV((float)width, 0, 0, width / s, 0);
-  t.vertexUV(0, 0, 0, 0, 0);
-  t.draw();
+  renderDirtBackground(0);
 
   int i = minecraft->progressStagePercentage;
 
@@ -39,21 +26,8 @@ void ProgressScreen::render(int xm, int ym, float a) {
 
     // printf("%d, %d - %d, %d\n", x, y, x + w, y + h);
 
-    glDisable2(GL_TEXTURE_2D);
-    t.begin();
-    t.color(0x808080);
-    t.vertex((float)x, (float)y, 0);
-    t.vertex((float)x, (float)(y + h), 0);
-    t.vertex((float)(x + w), (float)(y + h), 0);
-    t.vertex((float)(x + w), (float)y, 0);
-
-    t.color(0x80ff80);
-    t.vertex((float)x, (float)y, 0);
-    t.vertex((float)x, (float)(y + h), 0);
-    t.vertex((float)(x + i), (float)(y + h), 0);
-    t.vertex((float)(x + i), (float)y, 0);
-    t.draw();
-    glEnable2(GL_TEXTURE_2D);
+    fill((float)x, (float)y, (float)(x + w), (float)(y + h), 0xff808080);
+    fill((float)x, (float)y, (float)(x + i), (float)(y + h), 0xff80ff80);
   }
 
   glEnable2(GL_BLEND);

@@ -32,6 +32,10 @@
 /* static */ const int LevelRenderer::CHUNK_SIZE = 16;
 #endif
 
+namespace {
+constexpr float kFarFieldLodDistanceSqr = 96.0f * 96.0f;
+}
+
 LevelRenderer::LevelRenderer(Minecraft *mc)
     : mc(mc), textures(mc->textures), level(NULL), cullStep(0),
 
@@ -562,16 +566,38 @@ int LevelRenderer::renderChunks(int from, int to, int layer, float alpha) {
 
   // int lists = 0;
   renderList.clear();
-  renderList.init(xOff, yOff, zOff);
+  renderList.init(xOff, yOff, zOff, mc->graphics());
+  const bool useMeshLods =
+      mc->graphics() != NULL &&
+      mc->graphics()->kind() == GraphicsBackendKind::Vulkan;
 
   for (unsigned int i = 0; i < _renderChunks.size(); ++i) {
     Chunk *chunk = _renderChunks[i];
 #ifdef USE_VBO
-    renderList.addR(chunk->getRenderChunk(layer));
+    if (layer == 0 && useMeshLods) {
+      if (chunk->distanceToSqr(player) >= kFarFieldLodDistanceSqr &&
+          chunk->getLodRenderChunk().meshHandle != 0) {
+        renderList.addR(chunk->getLodRenderChunk());
+        renderList.next();
+        continue;
+      }
+
+      if (chunk->getGreedyRenderChunk().meshHandle != 0) {
+        renderList.addR(chunk->getGreedyRenderChunk());
+        renderList.next();
+      }
+      if (chunk->getRenderChunk(layer).meshHandle != 0) {
+        renderList.addR(chunk->getRenderChunk(layer));
+        renderList.next();
+      }
+    } else {
+      renderList.addR(chunk->getRenderChunk(layer));
+      renderList.next();
+    }
 #else
     renderList.add(chunk->getList(layer));
-#endif
     renderList.next();
+#endif
   }
 
   renderSameAsLast(layer, alpha);
@@ -887,6 +913,16 @@ void LevelRenderer::setTilesDirty(
 }
 
 void LevelRenderer::cull(Culler *culler, float a) {
+  if (mc->graphics() &&
+      mc->graphics()->kind() == GraphicsBackendKind::Vulkan) {
+    for (int i = 0; i < chunksLength; i++) {
+      if (!chunks[i]->isEmpty()) {
+        chunks[i]->visible = true;
+      }
+    }
+    return;
+  }
+
   for (int i = 0; i < chunksLength; i++) {
     if (!chunks[i]->isEmpty()) {
       if (!chunks[i]->visible || ((i + cullStep) & 15) == 0) {

@@ -20,6 +20,210 @@
 #include "../renderer/entity/ItemRenderer.h"
 #include "Font.h"
 #include "screens/IngameBlockSelectionScreen.h"
+#include <cmath>
+#include <cstdlib>
+
+namespace {
+auto envFlagEnabled(const char *name) -> bool {
+  const char *value = std::getenv(name);
+  return value && value[0] != 0 && value[0] != '0';
+}
+
+void transformSlotTextPoint(
+    const GLfloat *modelView, float x, float y, float &outX, float &outY) {
+  outX = modelView[0] * x + modelView[4] * y + modelView[12];
+  outY = modelView[1] * x + modelView[5] * y + modelView[13];
+}
+
+void getSlotTextScale(float &scaleX, float &scaleY) {
+  scaleX = 1.0f;
+  scaleY = 1.0f;
+
+  float tessScaleX = 1.0f;
+  float tessScaleY = 1.0f;
+  Tesselator::instance.getScale2d(tessScaleX, tessScaleY);
+
+  GLfloat modelView[16];
+  glesGetTrackedMatrix(GL_MODELVIEW_MATRIX, modelView);
+
+  const float dxX = modelView[0] * tessScaleX;
+  const float dxY = modelView[1] * tessScaleX;
+  const float dyX = modelView[4] * tessScaleY;
+  const float dyY = modelView[5] * tessScaleY;
+
+  const float computedScaleX = std::sqrt(dxX * dxX + dxY * dxY);
+  const float computedScaleY = std::sqrt(dyX * dyX + dyY * dyY);
+  if (computedScaleX > 0.0001f) {
+    scaleX = computedScaleX;
+  }
+  if (computedScaleY > 0.0001f) {
+    scaleY = computedScaleY;
+  }
+}
+
+auto slotDigitGlyph(char ch) -> const unsigned char * {
+  static const unsigned char k0[5] = {0x7, 0x5, 0x5, 0x5, 0x7};
+  static const unsigned char k1[5] = {0x2, 0x6, 0x2, 0x2, 0x7};
+  static const unsigned char k2[5] = {0x7, 0x1, 0x7, 0x4, 0x7};
+  static const unsigned char k3[5] = {0x7, 0x1, 0x7, 0x1, 0x7};
+  static const unsigned char k4[5] = {0x5, 0x5, 0x7, 0x1, 0x1};
+  static const unsigned char k5[5] = {0x7, 0x4, 0x7, 0x1, 0x7};
+  static const unsigned char k6[5] = {0x7, 0x4, 0x7, 0x5, 0x7};
+  static const unsigned char k7[5] = {0x7, 0x1, 0x1, 0x1, 0x1};
+  static const unsigned char k8[5] = {0x7, 0x5, 0x7, 0x5, 0x7};
+  static const unsigned char k9[5] = {0x7, 0x5, 0x7, 0x1, 0x7};
+  static const unsigned char kp[5] = {0x0, 0x2, 0x7, 0x2, 0x0};
+  switch (ch) {
+  case '0':
+    return k0;
+  case '1':
+    return k1;
+  case '2':
+    return k2;
+  case '3':
+    return k3;
+  case '4':
+    return k4;
+  case '5':
+    return k5;
+  case '6':
+    return k6;
+  case '7':
+    return k7;
+  case '8':
+    return k8;
+  case '9':
+    return k9;
+  case '+':
+    return kp;
+  default:
+    return nullptr;
+  }
+}
+
+int slotShadowColor(int color) {
+  const int oldAlpha = color & 0xff000000;
+  return ((color & 0x00fcfcfc) >> 2) | oldAlpha;
+}
+
+int slotBitmapWidth(const char *text) {
+  int width = 0;
+  bool first = true;
+  for (const char *it = text; *it; ++it) {
+    if (!slotDigitGlyph(*it)) {
+      return -1;
+    }
+    if (!first) {
+      width += 1;
+    }
+    width += 3;
+    first = false;
+  }
+  return width;
+}
+
+bool drawSlotCountBitmap(
+    Minecraft *minecraft, const char *text, float x, float y, int color, bool shadow) {
+  if (!minecraft || !minecraft->graphics() ||
+      minecraft->graphics()->kind() != GraphicsBackendKind::Vulkan) {
+    return false;
+  }
+
+  const int bitmapWidth = slotBitmapWidth(text);
+  if (bitmapWidth <= 0) {
+    return false;
+  }
+
+  float tessScaleX = 1.0f;
+  float tessScaleY = 1.0f;
+  Tesselator::instance.getScale2d(tessScaleX, tessScaleY);
+
+  GLfloat modelView[16];
+  glesGetTrackedMatrix(GL_MODELVIEW_MATRIX, modelView);
+
+  float scaleX = 1.0f;
+  float scaleY = 1.0f;
+  getSlotTextScale(scaleX, scaleY);
+
+  int textLength = 0;
+  for (const char *it = text; *it; ++it) {
+    ++textLength;
+  }
+  const float screenCell = textLength <= 2 ? 2.0f : 1.0f;
+  const float cellX = screenCell / scaleX;
+  const float cellY = screenCell / scaleY;
+  const float glyphHeight = 5.0f * cellY;
+  const float glyphWidth = (float)bitmapWidth * cellX;
+  const float slotWidth = 16.0f / scaleX;
+  const float slotHeight = 16.0f / scaleY;
+  const float originX = x + slotWidth - glyphWidth;
+  const float originY = y + slotHeight - glyphHeight;
+
+  const int passCount = shadow ? 2 : 1;
+  for (int pass = 0; pass < passCount; ++pass) {
+    const float offsetX = shadow && pass == 0 ? (1.0f / scaleX) : 0.0f;
+    const float offsetY = shadow && pass == 0 ? (1.0f / scaleY) : 0.0f;
+    const int passColor = shadow && pass == 0 ? slotShadowColor(color) : color;
+    float penX = 0.0f;
+    bool first = true;
+
+    for (const char *it = text; *it; ++it) {
+      const unsigned char *glyph = slotDigitGlyph(*it);
+      if (!glyph) {
+        return false;
+      }
+      if (!first) {
+        penX += cellX;
+      }
+
+      for (int row = 0; row < 5; ++row) {
+        for (int col = 0; col < 3; ++col) {
+          if ((glyph[row] & (1 << (2 - col))) == 0) {
+            continue;
+          }
+
+          const float localX0 =
+              tessScaleX * (originX + offsetX + penX + (float)col * cellX);
+          const float localY0 =
+              tessScaleY * (originY + offsetY + (float)row * cellY);
+          const float localX1 = tessScaleX *
+              (originX + offsetX + penX + (float)(col + 1) * cellX);
+          const float localY1 =
+              tessScaleY * (originY + offsetY + (float)(row + 1) * cellY);
+
+          float screenX0 = 0.0f;
+          float screenY0 = 0.0f;
+          float screenX1 = 0.0f;
+          float screenY1 = 0.0f;
+          transformSlotTextPoint(modelView, localX0, localY0, screenX0, screenY0);
+          transformSlotTextPoint(modelView, localX1, localY1, screenX1, screenY1);
+
+          screenX0 = std::floor(screenX0 + 0.5f);
+          screenY0 = std::floor(screenY0 + 0.5f);
+          screenX1 = std::floor(screenX1 + 0.5f);
+          screenY1 = std::floor(screenY1 + 0.5f);
+          if (screenX1 <= screenX0) {
+            screenX1 = screenX0 + 1.0f;
+          }
+          if (screenY1 <= screenY0) {
+            screenY1 = screenY0 + 1.0f;
+          }
+
+          if (!GuiComponent::drawQuad(screenX0, screenY0, screenX1 - screenX0,
+                  screenY1 - screenY0, passColor)) {
+            return false;
+          }
+        }
+      }
+
+      penX += 3.0f * cellX;
+      first = false;
+    }
+  }
+
+  return true;
+}
+} // namespace
 
 float Gui::InvGuiScale = 1.0f / 3.0f;
 float Gui::GuiScale = 1.0f / Gui::InvGuiScale;
@@ -260,13 +464,25 @@ void Gui::renderVignette(float br, int w, int h) {
   glColor4f2(tbr, tbr, tbr, 1);
   minecraft->textures->loadAndBindTexture("misc/vignette.png");
 
-  Tesselator &t = Tesselator::instance;
-  t.begin();
-  t.vertexUV(0, (float)h, -90, 0, 1);
-  t.vertexUV((float)w, (float)h, -90, 1, 1);
-  t.vertexUV((float)w, 0, -90, 1, 0);
-  t.vertexUV(0, 0, -90, 0, 0);
-  t.draw();
+  GraphicsTexturedQuad quad;
+  quad.width = (float)w;
+  quad.height = (float)h;
+  quad.canvasWidth = (float)w;
+  quad.canvasHeight = (float)h;
+  quad.r = tbr;
+  quad.g = tbr;
+  quad.b = tbr;
+  quad.a = 1.0f;
+  quad.blendMode = GraphicsBlendMode::ZeroOneMinusSrcColor;
+  if (!tryDrawTexturedQuad(quad)) {
+    Tesselator &t = Tesselator::instance;
+    t.begin();
+    t.vertexUV(0, (float)h, -90, 0, 1);
+    t.vertexUV((float)w, (float)h, -90, 1, 1);
+    t.vertexUV((float)w, 0, -90, 1, 0);
+    t.vertexUV(0, 0, -90, 0, 0);
+    t.draw();
+  }
   glDepthMask(true);
   glEnable(GL_DEPTH_TEST);
   glColor4f2(1, 1, 1, 1);
@@ -300,13 +516,53 @@ void Gui::renderSlotText(
   else
     buffer[0] = (char)157;
 
+  const bool isVulkan = minecraft->graphics() &&
+      minecraft->graphics()->kind() == GraphicsBackendKind::Vulkan;
+  if (isVulkan && envFlagEnabled("MCPE_VULKAN_DISABLE_SLOT_TEXT")) {
+    return;
+  }
+  if (isVulkan && envFlagEnabled("MCPE_VULKAN_SLOT_TEXT_DEBUG_BOX")) {
+    float scaleX = 1.0f;
+    float scaleY = 1.0f;
+    getSlotTextScale(scaleX, scaleY);
+    const float slotWidth = 16.0f / scaleX;
+    const float slotHeight = 16.0f / scaleY;
+    GuiComponent::drawQuad(x, y, slotWidth, slotHeight, 0xa0ff00ff);
+    return;
+  }
+
+  if (drawSlotCountBitmap(minecraft, buffer, x, y,
+          item->count > 0 ? 0xffcccccc : 0x60cccccc, shadow)) {
+    return;
+  }
+  if (isVulkan) {
+    return;
+  }
+
+  float drawX = x;
+  float drawY = y;
+  if (minecraft->graphics() &&
+      minecraft->graphics()->kind() == GraphicsBackendKind::Vulkan) {
+    float scaleX = 1.0f;
+    float scaleY = 1.0f;
+    getSlotTextScale(scaleX, scaleY);
+
+    const float slotWidth = 16.0f / scaleX;
+    const float slotHeight = 16.0f / scaleY;
+    const float textWidth = (float)minecraft->font->width(std::string(buffer));
+    const float textHeight = 8.0f;
+
+    drawX = x + slotWidth - textWidth;
+    drawY = y + slotHeight - textHeight;
+  }
+
   // LOGI("slot: %d - %s\n", slot, buffer);
   if (shadow)
     minecraft->font->drawShadow(
-        buffer, x, y, item->count > 0 ? 0xffcccccc : 0x60cccccc);
+        buffer, drawX, drawY, item->count > 0 ? 0xffcccccc : 0x60cccccc);
   else
     minecraft->font->draw(
-        buffer, x, y, item->count > 0 ? 0xffcccccc : 0x60cccccc);
+        buffer, drawX, drawY, item->count > 0 ? 0xffcccccc : 0x60cccccc);
 }
 
 void Gui::inventoryUpdated() { _inventoryNeedsUpdate = true; }
@@ -686,7 +942,7 @@ void Gui::renderChatMessages(
   //        glPushMatrix2();
   //        glTranslatef2(0, screenHeight - 48, 0);
   //        // glScalef2(1.0f / ssc.scale, 1.0f / ssc.scale, 1);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendFunc2(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   int baseY = screenHeight - 48;
   for (unsigned int i = 0; i < guiMessages.size() && i < max; i++) {
     if (guiMessages.at(i).ticks < 20 * 10 || isChatting) {

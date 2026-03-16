@@ -69,13 +69,20 @@ void WorldSelectionList::renderItem(int i, int x, int y, int h, Tesselator &t) {
   // float x1 = (float)x + (float)itemWidth;
 
   const float IY = (float)y - 8;
-  t.begin();
-  t.color(textColor);
-  t.vertexUV((float)(centerx - 32), IY, blitOffset, 0, 0);
-  t.vertexUV((float)(centerx - 32), IY + 48, blitOffset, 0, 1);
-  t.vertexUV((float)(centerx + 32), IY + 48, blitOffset, 1, 1);
-  t.vertexUV((float)(centerx + 32), IY, blitOffset, 1, 0);
-  t.draw();
+  GraphicsTexturedQuad quad;
+  quad.x = (float)(centerx - 32);
+  quad.y = IY;
+  quad.width = 64.0f;
+  quad.height = 48.0f;
+  if (!tryDrawTexturedQuad(quad, 0xff000000 | textColor)) {
+    t.begin();
+    t.color(textColor);
+    t.vertexUV((float)(centerx - 32), IY, blitOffset, 0, 0);
+    t.vertexUV((float)(centerx - 32), IY + 48, blitOffset, 0, 1);
+    t.vertexUV((float)(centerx + 32), IY + 48, blitOffset, 1, 1);
+    t.vertexUV((float)(centerx + 32), IY, blitOffset, 1, 0);
+    t.draw();
+  }
 }
 
 void WorldSelectionList::stepLeft() {

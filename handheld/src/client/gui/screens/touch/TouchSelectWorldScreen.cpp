@@ -93,15 +93,24 @@ void TouchWorldSelectionList::renderItem(
     // float x1 = (float)x + (float)itemWidth;
 
     const float IY = (float)y - 8; // @kindle-res: -3
-    t.begin();
-    t.color(textColor);
-    t.vertexUV((float)(centerx - 32), IY, blitOffset, 0, 0.125f);
-    t.vertexUV((float)(centerx - 32), IY + 48, blitOffset, 0,
-        0.875f); //@kindle-res: +44
-    t.vertexUV((float)(centerx + 32), IY + 48, blitOffset, 1,
-        0.875f); //@kindle-res: +44
-    t.vertexUV((float)(centerx + 32), IY, blitOffset, 1, 0.125f);
-    t.draw();
+    GraphicsTexturedQuad quad;
+    quad.x = (float)(centerx - 32);
+    quad.y = IY;
+    quad.width = 64.0f;
+    quad.height = 48.0f;
+    quad.v0 = 0.125f;
+    quad.v1 = 0.875f;
+    if (!tryDrawTexturedQuad(quad, 0xff000000 | textColor)) {
+      t.begin();
+      t.color(textColor);
+      t.vertexUV((float)(centerx - 32), IY, blitOffset, 0, 0.125f);
+      t.vertexUV((float)(centerx - 32), IY + 48, blitOffset, 0,
+          0.875f); //@kindle-res: +44
+      t.vertexUV((float)(centerx + 32), IY + 48, blitOffset, 1,
+          0.875f); //@kindle-res: +44
+      t.vertexUV((float)(centerx + 32), IY, blitOffset, 1, 0.125f);
+      t.draw();
+    }
   } else {
     // Draw the "Create new world" icon
     drawCenteredString(
@@ -123,13 +132,24 @@ void TouchWorldSelectionList::renderItem(
       v1 += H / 256.0f;
     }
 
-    t.begin();
-    t.color(textColor);
-    t.vertexUV((float)centerx - W * 0.5f, IY, blitOffset, u0, v0);
-    t.vertexUV((float)centerx - W * 0.5f, IY + H, blitOffset, u0, v1);
-    t.vertexUV((float)centerx + W * 0.5f, IY + H, blitOffset, u1, v1);
-    t.vertexUV((float)centerx + W * 0.5f, IY, blitOffset, u1, v0);
-    t.draw();
+    GraphicsTexturedQuad quad;
+    quad.x = (float)centerx - W * 0.5f;
+    quad.y = IY;
+    quad.width = W;
+    quad.height = H;
+    quad.u0 = u0;
+    quad.v0 = v0;
+    quad.u1 = u1;
+    quad.v1 = v1;
+    if (!tryDrawTexturedQuad(quad, 0xff000000 | textColor)) {
+      t.begin();
+      t.color(textColor);
+      t.vertexUV((float)centerx - W * 0.5f, IY, blitOffset, u0, v0);
+      t.vertexUV((float)centerx - W * 0.5f, IY + H, blitOffset, u0, v1);
+      t.vertexUV((float)centerx + W * 0.5f, IY + H, blitOffset, u1, v1);
+      t.vertexUV((float)centerx + W * 0.5f, IY, blitOffset, u1, v0);
+      t.draw();
+    }
   }
 }
 

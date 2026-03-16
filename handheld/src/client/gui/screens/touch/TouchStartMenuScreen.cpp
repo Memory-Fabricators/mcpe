@@ -49,15 +49,11 @@ void BuyButton::render(Minecraft *minecraft, int xm, int ym) {
   if (Textures::isTextureIdValid(texId)) {
     const ImageDef &d = _imageDef;
     Tesselator &t = Tesselator::instance;
-
-    t.begin();
+    int color = 0xffffffff;
     if (!active)
-      t.color(0xff808080);
+      color = 0xff808080;
     else if (hovered || selected)
-      t.color(0xffcccccc);
-    // else						t.color(0xffe0e0e0);
-    else
-      t.color(0xffffffff);
+      color = 0xffcccccc;
 
     float hx = ((float)d.width) * 0.5f;
     float hy = ((float)d.height) * 0.5f;
@@ -75,12 +71,27 @@ void BuyButton::render(Minecraft *minecraft, int xm, int ym) {
       float u1 = (src->x + src->w) / (float)td->w;
       float v0 = (src->y) / (float)td->h;
       float v1 = (src->y + src->h) / (float)td->h;
+      GraphicsTexturedQuad quad;
+      quad.x = cx - hx;
+      quad.y = cy - hy;
+      quad.width = hx * 2.0f;
+      quad.height = hy * 2.0f;
+      quad.u0 = u0;
+      quad.v0 = v0;
+      quad.u1 = u1;
+      quad.v1 = v1;
+      if (tryDrawTexturedQuad(quad, color)) {
+        return;
+      }
+
+      t.begin();
+      t.color(color);
       t.vertexUV(cx - hx, cy - hy, blitOffset, u0, v0);
       t.vertexUV(cx - hx, cy + hy, blitOffset, u0, v1);
       t.vertexUV(cx + hx, cy + hy, blitOffset, u1, v1);
       t.vertexUV(cx + hx, cy - hy, blitOffset, u1, v0);
+      t.draw();
     }
-    t.draw();
   }
 }
 
@@ -239,15 +250,22 @@ void StartMenuScreen::render(int xm, int ym, float a) {
     const float scale = 2.0f * wh / (float)data->w;
     const float h = scale * (float)data->h;
 
-    // Render title text
-    Tesselator &t = Tesselator::instance;
-    glColor4f2(1, 1, 1, 1);
-    t.begin();
-    t.vertexUV(x - wh, y + h, blitOffset, 0, 1);
-    t.vertexUV(x + wh, y + h, blitOffset, 1, 1);
-    t.vertexUV(x + wh, y + 0, blitOffset, 1, 0);
-    t.vertexUV(x - wh, y + 0, blitOffset, 0, 0);
-    t.draw();
+    GraphicsTexturedQuad quad;
+    quad.x = x - wh;
+    quad.y = y;
+    quad.width = wh * 2.0f;
+    quad.height = h;
+    if (!tryDrawTexturedQuad(quad)) {
+      // Render title text
+      Tesselator &t = Tesselator::instance;
+      glColor4f2(1, 1, 1, 1);
+      t.begin();
+      t.vertexUV(x - wh, y + h, blitOffset, 0, 1);
+      t.vertexUV(x + wh, y + h, blitOffset, 1, 1);
+      t.vertexUV(x + wh, y + 0, blitOffset, 1, 0);
+      t.vertexUV(x - wh, y + 0, blitOffset, 0, 0);
+      t.draw();
+    }
 
     drawString(font, version, versionPosX, (int)(y + h) + 2,
         /*50,*/ 0xffcccccc); // 0x666666);

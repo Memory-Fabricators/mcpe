@@ -51,14 +51,9 @@ void LargeImageButton::render(Minecraft *minecraft, int xm, int ym) {
   if (Textures::isTextureIdValid(texId)) {
     const ImageDef &d = _imageDef;
     Tesselator &t = Tesselator::instance;
-
-    t.begin();
+    int color = 0xffffffff;
     if (!active)
-      t.color(0xff808080);
-    // else if (hovered||selected) t.color(0xffffffff);
-    // else						t.color(0xffe0e0e0);
-    else
-      t.color(0xffffffff);
+      color = 0xff808080;
 
     float hx = ((float)d.width) * 0.5f;
     float hy = ((float)d.height) * 0.5f;
@@ -75,30 +70,59 @@ void LargeImageButton::render(Minecraft *minecraft, int xm, int ym) {
 
     const IntRectangle *src = _imageDef.getSrc();
     if (src) {
-      const TextureData *d =
+      const TextureData *td =
           minecraft->textures->getTemporaryTextureData(texId);
-      if (d != NULL) {
-        float u0 = (src->x + (hovered ? src->w : 0)) / (float)d->w;
-        float u1 = (src->x + (hovered ? 2 * src->w : src->w)) / (float)d->w;
-        float v0 = src->y / (float)d->h;
-        float v1 = (src->y + src->h) / (float)d->h;
+      if (td != NULL) {
+        float u0 = (src->x + (hovered ? src->w : 0)) / (float)td->w;
+        float u1 =
+            (src->x + (hovered ? 2 * src->w : src->w)) / (float)td->w;
+        float v0 = src->y / (float)td->h;
+        float v1 = (src->y + src->h) / (float)td->h;
+        GraphicsTexturedQuad quad;
+        quad.x = cx - hx;
+        quad.y = cy - hy;
+        quad.width = hx * 2.0f;
+        quad.height = hy * 2.0f;
+        quad.u0 = u0;
+        quad.v0 = v0;
+        quad.u1 = u1;
+        quad.v1 = v1;
+        if (tryDrawTexturedQuad(quad, color)) {
+          goto draw_label;
+        }
+
+        t.begin();
+        t.color(color);
         t.vertexUV(cx - hx, cy - hy, blitOffset, u0, v0);
         t.vertexUV(cx - hx, cy + hy, blitOffset, u0, v1);
         t.vertexUV(cx + hx, cy + hy, blitOffset, u1, v1);
         t.vertexUV(cx + hx, cy - hy, blitOffset, u1, v0);
+        t.draw();
       }
     } else {
+      GraphicsTexturedQuad quad;
+      quad.x = cx - hx;
+      quad.y = cy - hy;
+      quad.width = hx * 2.0f;
+      quad.height = hy * 2.0f;
+      if (tryDrawTexturedQuad(quad, color)) {
+        goto draw_label;
+      }
+
+      t.begin();
+      t.color(color);
       t.vertexUV(cx - hx, cy - hy, blitOffset, 0, 0);
       t.vertexUV(cx - hx, cy + hy, blitOffset, 0, 1);
       t.vertexUV(cx + hx, cy + hy, blitOffset, 1, 1);
       t.vertexUV(cx + hx, cy - hy, blitOffset, 1, 0);
+      t.draw();
     }
-    t.draw();
   }
   // blit(0, 0, 0, 0, 64, 64, 256, 256);
 
   // LOGI("%d %d\n", x+d.x, x+d.x+d.w);
 
+draw_label:
   if (!active) {
     drawCenteredString(
         font, msg, x + width / 2, y + 11 /*(h - 16)*/, 0xffa0a0a0);

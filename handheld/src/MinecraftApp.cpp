@@ -92,6 +92,7 @@ void MinecraftApp::init() {
 #endif
 
 #ifndef STANDALONE_SERVER
+  Tesselator::instance.setGraphicsBackend(graphics());
   initGLStates();
   Tesselator::instance.init();
   I18n::loadLanguage(platform(), "en_US");
@@ -229,18 +230,25 @@ void MinecraftApp::updateStats() {
 
 void MinecraftApp::initGLStates() {
 #ifndef STANDALONE_SERVER
+  const bool actualGlCalls = glesActualCallsEnabled();
   // glShadeModel2(GL_SMOOTH);
   // glClearDepthf(1.0f);
   glEnable2(GL_DEPTH_TEST);
-  glDepthFunc(GL_LEQUAL);
-  glDepthRangef(0, 1);
+  if (actualGlCalls) {
+    glDepthFunc(GL_LEQUAL);
+    glDepthRangef(0, 1);
+  }
   glEnable2(GL_ALPHA_TEST);
-  glAlphaFunc(GL_GREATER, 0.1f);
-  glEnable(GL_CULL_FACE);
-  glCullFace(GL_BACK);
+  if (actualGlCalls) {
+    glAlphaFunc(GL_GREATER, 0.1f);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+  }
 
   glEnable2(GL_TEXTURE_2D);
-  glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
+  if (actualGlCalls) {
+    glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
+  }
 
   // Both updates isPowerVR flag in java and returns if the graphics chip is
   // PowerVR SGX or not
@@ -299,6 +307,7 @@ bool MinecraftApp::handleBack(bool isDown) {
 
 void MinecraftApp::onGraphicsReset() {
 #ifndef STANDALONE_SERVER
+  Tesselator::instance.setGraphicsBackend(graphics());
   initGLStates();
   Tesselator::instance.init();
 

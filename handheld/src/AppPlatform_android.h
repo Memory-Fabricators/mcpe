@@ -2,7 +2,8 @@
 #define APPPLATFORM_ANDROID_H__
 
 #include "AppPlatform.h"
-#include "client/renderer/gles.h"
+#include <GLES/gl.h>
+
 #include "platform/log.h"
 #include "platform/time.h"
 #include <android/native_activity.h>
