@@ -9,8 +9,8 @@ ImageButton::ImageButton(int id, const std::string &msg) : super(id, msg) {
   setupDefault();
 }
 
-ImageButton::ImageButton(int id, const std::string &msg,
-                         const ImageDef &imagedef)
+ImageButton::ImageButton(
+    int id, const std::string &msg, const ImageDef &imagedef)
     : super(id, msg), _imageDef(imagedef) {
   setupDefault();
 }
@@ -38,10 +38,10 @@ void ImageButton::render(Minecraft *minecraft, int xm, int ym) {
   // minecraft->textures->loadAndBindTexture("gui/gui.png");
   glColor4f2(1, 1, 1, 1);
 
-  bool hovered = active && (minecraft->useTouchscreen()
-                                ? (_currentlyDown && xm >= x && ym >= y &&
-                                   xm < x + width && ym < y + height)
-                                : false);
+  bool hovered = active &&
+      (minecraft->useTouchscreen() ? (_currentlyDown && xm >= x && ym >= y &&
+                                         xm < x + width && ym < y + height)
+                                   : false);
   bool IsSecondImage = isSecondImage(hovered);
 
   // printf("ButtonId: %d - Hovered? %d (cause: %d, %d, %d, %d, <> %d, %d)\n",
@@ -53,10 +53,9 @@ void ImageButton::render(Minecraft *minecraft, int xm, int ym) {
 
   renderBg(minecraft, xm, ym);
 
-  TextureId texId =
-      (_imageDef.name.length() > 0)
-          ? minecraft->textures->loadAndBindTexture(_imageDef.name)
-          : Textures::InvalidId;
+  TextureId texId = (_imageDef.name.length() > 0)
+      ? minecraft->textures->loadAndBindTexture(_imageDef.name)
+      : Textures::InvalidId;
   if (Textures::isTextureIdValid(texId)) {
     const ImageDef &d = _imageDef;
     Tesselator &t = Tesselator::instance;
@@ -106,15 +105,15 @@ void ImageButton::render(Minecraft *minecraft, int xm, int ym) {
   // LOGI("%d %d\n", x+d.x, x+d.x+d.w);
 
   if (!active) {
-    drawCenteredString(font, msg, x + width / 2, y + 16 /*(h - 16)*/,
-                       0xffa0a0a0);
+    drawCenteredString(
+        font, msg, x + width / 2, y + 16 /*(h - 16)*/, 0xffa0a0a0);
   } else {
     if (hovered || selected) {
-      drawCenteredString(font, msg, x + width / 2, y + 17 /*(h - 16)*/,
-                         0xffffa0);
+      drawCenteredString(
+          font, msg, x + width / 2, y + 17 /*(h - 16)*/, 0xffffa0);
     } else {
-      drawCenteredString(font, msg, x + width / 2, y + 16 /*(h - 48)*/,
-                         0xe0e0e0);
+      drawCenteredString(
+          font, msg, x + width / 2, y + 16 /*(h - 48)*/, 0xe0e0e0);
     }
   }
 }
@@ -125,8 +124,8 @@ void ImageButton::render(Minecraft *minecraft, int xm, int ym) {
 OptionButton::OptionButton(const Options::Option *option)
     : _option(option), _isFloat(false), super(ButtonId, "") {}
 
-OptionButton::OptionButton(const Options::Option *option, float onValue,
-                           float offValue)
+OptionButton::OptionButton(
+    const Options::Option *option, float onValue, float offValue)
     : _option(option), _isFloat(true), _onValue(onValue), _offValue(offValue),
       super(ButtonId, "") {}
 
@@ -134,8 +133,8 @@ bool OptionButton::isSecondImage(bool hovered) { return _secondImage; }
 
 void OptionButton::toggle(Options *options) {
   if (_isFloat) {
-    options->set(_option, (Mth::abs(_current - _onValue) < 0.01f) ? _offValue
-                                                                  : _onValue);
+    options->set(_option,
+        (Mth::abs(_current - _onValue) < 0.01f) ? _offValue : _onValue);
   } else {
     options->toggle(_option, 1);
   }
@@ -152,8 +151,8 @@ void OptionButton::updateImage(Options *options) {
   }
 }
 
-void OptionButton::mouseClicked(Minecraft *minecraft, int x, int y,
-                                int buttonNum) {
+void OptionButton::mouseClicked(
+    Minecraft *minecraft, int x, int y, int buttonNum) {
   if (buttonNum == MouseAction::ACTION_LEFT) {
     if (clicked(minecraft, x, y)) {
       toggle(&minecraft->options);

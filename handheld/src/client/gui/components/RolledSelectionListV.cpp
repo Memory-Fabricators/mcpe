@@ -7,8 +7,7 @@
 #include "../../renderer/gles.h"
 
 RolledSelectionListV::RolledSelectionListV(Minecraft *minecraft_, int width_,
-                                           int height_, int x0_, int x1_,
-                                           int y0_, int y1_, int itemHeight_)
+    int height_, int x0_, int x1_, int y0_, int y1_, int itemHeight_)
     : minecraft(minecraft_), width(width_), height(height_), x0((float)x0_),
       x1((float)x1_), y0((float)y0_), y1((float)y1_), itemHeight(itemHeight_),
       selectionY(-1), lastSelectionTime(0), lastSelection(-1),
@@ -29,8 +28,8 @@ void RolledSelectionListV::setComponentSelected(bool selected) {
   _componentSelected = selected;
 }
 
-void RolledSelectionListV::setRenderHeader(bool _renderHeader,
-                                           int _headerHeight) {
+void RolledSelectionListV::setRenderHeader(
+    bool _renderHeader, int _headerHeight) {
   doRenderHeader = _renderHeader;
   headerHeight = _headerHeight;
 

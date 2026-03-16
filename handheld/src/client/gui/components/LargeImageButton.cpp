@@ -10,8 +10,8 @@ LargeImageButton::LargeImageButton(int id, const std::string &msg)
   setupDefault();
 }
 
-LargeImageButton::LargeImageButton(int id, const std::string &msg,
-                                   ImageDef &imagedef)
+LargeImageButton::LargeImageButton(
+    int id, const std::string &msg, ImageDef &imagedef)
     : super(id, msg) {
   _imageDef = imagedef;
   setupDefault();
@@ -31,10 +31,10 @@ void LargeImageButton::render(Minecraft *minecraft, int xm, int ym) {
 
   // minecraft->textures->loadAndBindTexture("gui/gui.png");
   glColor4f2(1, 1, 1, 1);
-  bool hovered = active && (minecraft->useTouchscreen()
-                                ? (_currentlyDown && xm >= x && ym >= y &&
-                                   xm < x + width && ym < y + height)
-                                : false);
+  bool hovered = active &&
+      (minecraft->useTouchscreen() ? (_currentlyDown && xm >= x && ym >= y &&
+                                         xm < x + width && ym < y + height)
+                                   : false);
 
   // printf("ButtonId: %d - Hovered? %d (cause: %d, %d, %d, %d, <> %d, %d)\n",
   // id, hovered, x, y, x+w, y+h, xm, ym); int yImage = getYImage(hovered ||
@@ -45,10 +45,9 @@ void LargeImageButton::render(Minecraft *minecraft, int xm, int ym) {
 
   renderBg(minecraft, xm, ym);
 
-  TextureId texId =
-      (_imageDef.name.length() > 0)
-          ? minecraft->textures->loadAndBindTexture(_imageDef.name)
-          : Textures::InvalidId;
+  TextureId texId = (_imageDef.name.length() > 0)
+      ? minecraft->textures->loadAndBindTexture(_imageDef.name)
+      : Textures::InvalidId;
   if (Textures::isTextureIdValid(texId)) {
     const ImageDef &d = _imageDef;
     Tesselator &t = Tesselator::instance;
@@ -101,15 +100,15 @@ void LargeImageButton::render(Minecraft *minecraft, int xm, int ym) {
   // LOGI("%d %d\n", x+d.x, x+d.x+d.w);
 
   if (!active) {
-    drawCenteredString(font, msg, x + width / 2, y + 11 /*(h - 16)*/,
-                       0xffa0a0a0);
+    drawCenteredString(
+        font, msg, x + width / 2, y + 11 /*(h - 16)*/, 0xffa0a0a0);
   } else {
     if (hovered || selected) {
-      drawCenteredString(font, msg, x + width / 2, y + 11 /*(h - 16)*/,
-                         0xffffa0);
+      drawCenteredString(
+          font, msg, x + width / 2, y + 11 /*(h - 16)*/, 0xffffa0);
     } else {
-      drawCenteredString(font, msg, x + width / 2, y + 11 /*(h - 48)*/,
-                         0xe0e0e0);
+      drawCenteredString(
+          font, msg, x + width / 2, y + 11 /*(h - 48)*/, 0xe0e0e0);
     }
   }
 }

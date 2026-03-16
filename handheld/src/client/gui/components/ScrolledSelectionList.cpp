@@ -8,8 +8,7 @@
 static int Abs(int d) { return d >= 0 ? d : -d; }
 
 ScrolledSelectionList::ScrolledSelectionList(Minecraft *_minecraft, int _width,
-                                             int _height, int _y0, int _y1,
-                                             int _itemHeight)
+    int _height, int _y0, int _y1, int _itemHeight)
     : minecraft(_minecraft), width(_width), height(_height), y0((float)_y0),
       y1((float)_y1), itemHeight(_itemHeight), x0(0.0f), x1((float)_width),
       selectionY(-1), lastSelectionTime(0), renderSelection(true),
@@ -20,8 +19,8 @@ void ScrolledSelectionList::setRenderSelection(bool _renderSelection) {
   renderSelection = _renderSelection;
 }
 
-void ScrolledSelectionList::setRenderHeader(bool _renderHeader,
-                                            int _headerHeight) {
+void ScrolledSelectionList::setRenderHeader(
+    bool _renderHeader, int _headerHeight) {
   doRenderHeader = _renderHeader;
   headerHeight = _headerHeight;
 
@@ -194,7 +193,8 @@ void ScrolledSelectionList::render(int xm, int ym, float a) {
   // 			float max = getMaxPosition() - (y1 - y0 - 4);
   // 			if (max > 0) {
   // 				float barHeight = (y1 - y0) * (y1 - y0) /
-  // (getMaxPosition()); 				if (barHeight < 32) barHeight = 32; 				if (barHeight > (y1
+  // (getMaxPosition()); 				if (barHeight < 32)
+  // barHeight = 32; 				if (barHeight > (y1
   // - y0 - 8)) barHeight = (y1 - y0 - 8);
   //
   // 				float yp = (int) yo * (y1 - y0 - barHeight) /
@@ -220,8 +220,8 @@ void ScrolledSelectionList::render(int xm, int ym, float a) {
   // 				t.color(0xc0c0c0, 255);
   // 				t.vertexUV(xx0, yp + barHeight - 1, 0, 0, 1);
   // 				t.vertexUV(xx1 - 1, yp + barHeight - 1, 0, 1,
-  // 1); 				t.vertexUV(xx1 - 1, yp, 0, 1, 0); 				t.vertexUV(xx0, yp, 0, 0, 0);
-  // 				t.draw();
+  // 1); 				t.vertexUV(xx1 - 1, yp, 0, 1, 0);
+  // t.vertexUV(xx0, yp, 0, 0, 0); 				t.draw();
   // 			}
   // 		}
 
@@ -235,8 +235,8 @@ void ScrolledSelectionList::render(int xm, int ym, float a) {
   glDisable2(GL_BLEND);
 }
 
-void ScrolledSelectionList::renderHoleBackground(float y0, float y1, int a0,
-                                                 int a1) {
+void ScrolledSelectionList::renderHoleBackground(
+    float y0, float y1, int a0, int a1) {
   Tesselator &t = Tesselator::instance;
   minecraft->textures->loadAndBindTexture("gui/background.png");
   glColor4f2(1.0f, 1, 1, 1);

@@ -26,7 +26,7 @@
     const int errCode = glGetError();                                          \
     if (errCode != 0)                                                          \
       LOGE("OpenGL ERROR @%d: #%d @ (%s : %d)\n", x, errCode, __FILE__,        \
-           __LINE__);                                                          \
+          __LINE__);                                                           \
   } while (0)
 #else
 #define GLERR(x) x
@@ -50,7 +50,7 @@ void drawArrayVTC_NoState(int bufferId, int vertices, int vertexSize4);
 void glInit(SDL_Window *window);
 void gluPerspective(GLfloat fovy, GLfloat aspect, GLfloat zNear, GLfloat zFar);
 int glhUnProjectf(float winx, float winy, float winz, float *modelview,
-                  float *projection, int *viewport, float *objectCoordinate);
+    float *projection, int *viewport, float *objectCoordinate);
 
 // Used for "debugging" (...). Obviously stupid dependency on Options (and ugly
 // gl*2 calls).
@@ -210,7 +210,7 @@ int glhUnProjectf(float winx, float winy, float winz, float *modelview,
   do {                                                                         \
     if (Options::debugGl)                                                      \
       LOGI("glColor4f2 @ %s:%d : (%f,%f,%f,%f)\n", __FILE__, __LINE__, r, g,   \
-           b, a);                                                              \
+          b, a);                                                               \
     glColor4f(r, g, b, a);                                                     \
     GLERR(21);                                                                 \
   } while (0)

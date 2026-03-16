@@ -29,7 +29,7 @@ BuyButton::BuyButton(int id) : super(id, "") {
   ImageDef def;
   // Setup the source rectangle
   def.setSrc(IntRectangle(64, 182, 190, 55));
-  def.width = 75;                     // rc.w / 3;
+  def.width = 75; // rc.w / 3;
   def.height = 75 * (55.0f / 190.0f); // rc.h / 3;
   def.name = "gui/gui.png";
 
@@ -38,15 +38,14 @@ BuyButton::BuyButton(int id) : super(id, "") {
 
 void BuyButton::render(Minecraft *minecraft, int xm, int ym) {
   glColor4f2(1, 1, 1, 1);
-  bool hovered =
-      active && (minecraft->useTouchscreen()
-                     ? (xm >= x && ym >= y && xm < x + width && ym < y + height)
-                     : false);
+  bool hovered = active &&
+      (minecraft->useTouchscreen()
+              ? (xm >= x && ym >= y && xm < x + width && ym < y + height)
+              : false);
   renderBg(minecraft, xm, ym);
-  TextureId texId =
-      (_imageDef.name.length() > 0)
-          ? minecraft->textures->loadAndBindTexture(_imageDef.name)
-          : Textures::InvalidId;
+  TextureId texId = (_imageDef.name.length() > 0)
+      ? minecraft->textures->loadAndBindTexture(_imageDef.name)
+      : Textures::InvalidId;
   if (Textures::isTextureIdValid(texId)) {
     const ImageDef &d = _imageDef;
     Tesselator &t = Tesselator::instance;
@@ -184,7 +183,7 @@ void StartMenuScreen::setupPositions() {
 
   copyrightPosX = width - minecraft->font->width(copyright) - 1;
   versionPosX = (width - minecraft->font->width(version)) /
-                2; // - minecraft->font->width(version) - 2;
+      2; // - minecraft->font->width(version) - 2;
 }
 
 void StartMenuScreen::tick() { _updateLicense(); }
@@ -251,7 +250,7 @@ void StartMenuScreen::render(int xm, int ym, float a) {
     t.draw();
 
     drawString(font, version, versionPosX, (int)(y + h) + 2,
-               /*50,*/ 0xffcccccc); // 0x666666);
+        /*50,*/ 0xffcccccc); // 0x666666);
     drawString(font, copyright, copyrightPosX, height - 10, 0xffffff);
     // patch->draw(t, 0, 20);
   }

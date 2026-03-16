@@ -12,31 +12,31 @@
 #include <SDL3/SDL_opengles.h>
 #endif
 
-typedef struct AppContext {
+struct AppContext {
 #ifndef STANDALONE_SERVER
   SDL_Window *window;
   SDL_GLContext context;
   bool doRender;
 #endif
   AppPlatform *platform;
-} AppContext;
+};
 
 class App {
 public:
   App() : _finished(false), _inited(false) { _context.platform = 0; }
-  virtual ~App() {}
+  virtual ~App() = default;
 
-  void init(AppContext &c) {
-    _context = c;
+  void init(AppContext &context) {
+    _context = context;
     init();
     _inited = true;
   }
-  bool isInited() { return _inited; }
+  [[nodiscard]] auto isInited() const -> bool { return _inited; }
 
-  virtual AppPlatform *platform() { return _context.platform; }
+  virtual auto platform() -> AppPlatform * { return _context.platform; }
 
-  void onGraphicsReset(AppContext &c) {
-    _context = c;
+  void onGraphicsReset(AppContext &context) {
+    _context = context;
     onGraphicsReset();
   }
 

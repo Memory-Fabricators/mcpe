@@ -59,22 +59,22 @@ void ProgressScreen::render(int xm, int ym, float a) {
   glEnable2(GL_BLEND);
 
   const char *title = "Generating world";
-  minecraft->font->drawShadow(
-      title, (float)((width - minecraft->font->width(title)) / 2),
+  minecraft->font->drawShadow(title,
+      (float)((width - minecraft->font->width(title)) / 2),
       (float)(height / 2 - 4 - 16), 0xffffff);
 
   const char *status = minecraft->getProgressMessage();
   const int progressWidth = minecraft->font->width(status);
   const int progressLeft = (width - progressWidth) / 2;
   const int progressY = height / 2 - 4 + 8;
-  minecraft->font->drawShadow(status, (float)progressLeft, (float)progressY,
-                              0xffffff);
+  minecraft->font->drawShadow(
+      status, (float)progressLeft, (float)progressY, 0xffffff);
 
 #if APPLE_DEMO_PROMOTION
   drawCenteredString(minecraft->font, "This demonstration version", width / 2,
-                     progressY + 36, 0xffffff);
+      progressY + 36, 0xffffff);
   drawCenteredString(minecraft->font, "does not allow saving games", width / 2,
-                     progressY + 46, 0xffffff);
+      progressY + 46, 0xffffff);
 #endif
 
   // If we're locating the server, show our famous spinner!
@@ -83,8 +83,8 @@ void ProgressScreen::render(int xm, int ym, float a) {
     const int spinnerX = progressLeft + progressWidth + 6;
     static const char *spinnerTexts[] = {"-", "\\", "|", "/"};
     int n = ((int)(5.5f * getTimeS()) % 4);
-    drawCenteredString(minecraft->font, spinnerTexts[n], spinnerX, progressY,
-                       0xffffffff);
+    drawCenteredString(
+        minecraft->font, spinnerTexts[n], spinnerX, progressY, 0xffffffff);
   }
 
   glDisable2(GL_BLEND);

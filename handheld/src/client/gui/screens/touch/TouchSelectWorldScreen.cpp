@@ -21,12 +21,12 @@ namespace Touch {
 //
 // World Selection List
 //
-TouchWorldSelectionList::TouchWorldSelectionList(Minecraft *minecraft,
-                                                 int width, int height)
+TouchWorldSelectionList::TouchWorldSelectionList(
+    Minecraft *minecraft, int width, int height)
     : _height(height), hasPickedLevel(false), pickedIndex(-1), currentTick(0),
       stoppedTick(-1), mode(0), _newWorldSelected(false),
-      RolledSelectionListH(minecraft, width, height, 0, width, 24, height - 32,
-                           120) {
+      RolledSelectionListH(
+          minecraft, width, height, 0, width, 24, height - 32, 120) {
   _renderBottomBorder = false;
   // setRenderSelection(false);
 }
@@ -67,8 +67,8 @@ void TouchWorldSelectionList::selectStart(int item, int localX, int localY) {
 
 void TouchWorldSelectionList::selectCancel() { _newWorldSelected = false; }
 
-void TouchWorldSelectionList::renderItem(int i, int x, int y, int h,
-                                         Tesselator &t) {
+void TouchWorldSelectionList::renderItem(
+    int i, int x, int y, int h, Tesselator &t) {
   int centerx = x + itemWidth / 2;
   float a0 = Mth::Max(1.1f - std::abs(width / 2 - centerx) * 0.0055f, 0.2f);
   if (a0 > 1)
@@ -97,15 +97,15 @@ void TouchWorldSelectionList::renderItem(int i, int x, int y, int h,
     t.color(textColor);
     t.vertexUV((float)(centerx - 32), IY, blitOffset, 0, 0.125f);
     t.vertexUV((float)(centerx - 32), IY + 48, blitOffset, 0,
-               0.875f); //@kindle-res: +44
+        0.875f); //@kindle-res: +44
     t.vertexUV((float)(centerx + 32), IY + 48, blitOffset, 1,
-               0.875f); //@kindle-res: +44
+        0.875f); //@kindle-res: +44
     t.vertexUV((float)(centerx + 32), IY, blitOffset, 1, 0.125f);
     t.draw();
   } else {
     // Draw the "Create new world" icon
-    drawCenteredString(minecraft->font, "Create new", centerx, TY + 12,
-                       textColor);
+    drawCenteredString(
+        minecraft->font, "Create new", centerx, TY + 12, textColor);
 
     minecraft->textures->loadAndBindTexture("gui/touchgui.png");
 
@@ -135,8 +135,9 @@ void TouchWorldSelectionList::renderItem(int i, int x, int y, int h,
 
 void TouchWorldSelectionList::stepLeft() {
   if (selectedItem > 0) {
-    int xoffset = (int)(xo - ((float)(selectedItem * itemWidth) +
-                              ((float)(itemWidth - width)) * 0.5f));
+    int xoffset = (int)(xo -
+        ((float)(selectedItem * itemWidth) +
+            ((float)(itemWidth - width)) * 0.5f));
     td.start = xo;
     td.stop = xo - itemWidth - xoffset;
     td.cur = 0;
@@ -148,8 +149,9 @@ void TouchWorldSelectionList::stepLeft() {
 
 void TouchWorldSelectionList::stepRight() {
   if (selectedItem >= 0 && selectedItem < getNumberOfItems() - 1) {
-    int xoffset = (int)(xo - ((float)(selectedItem * itemWidth) +
-                              ((float)(itemWidth - width)) * 0.5f));
+    int xoffset = (int)(xo -
+        ((float)(selectedItem * itemWidth) +
+            ((float)(itemWidth - width)) * 0.5f));
     td.start = xo;
     td.stop = xo + itemWidth - xoffset;
     td.cur = 0;
@@ -333,11 +335,10 @@ void SelectWorldScreen::setupPositions() {
 
   // Center buttons
   bDelete.x = (width - bDelete.width) / 2;
-  bCreate.x =
-      width -
+  bCreate.x = width -
       bCreate
           .width; // width / 2					- bCreate.w / 2;
-  bBack.x = 0;    // width / 2 + 4 + bCreate.w - bBack.w / 2;
+  bBack.x = 0; // width / 2 + 4 + bCreate.w - bBack.w / 2;
   bHeader.x = bBack.width;
   bHeader.width = width - (bBack.width + bCreate.width);
   bHeader.height = bCreate.height;
@@ -364,8 +365,8 @@ void SelectWorldScreen::buttonClicked(Button *button) {
   }
   if (button->id == bWorldView.id) {
     // Try to "click" the item in the middle
-    worldsList->selectItem(worldsList->getItemAtPosition(width / 2, height / 2),
-                           false);
+    worldsList->selectItem(
+        worldsList->getItemAtPosition(width / 2, height / 2), false);
   }
 }
 
@@ -381,9 +382,8 @@ bool SelectWorldScreen::isIndexValid(int index) {
   return worldsList && index >= 0 && index < worldsList->getNumberOfItems() - 1;
 }
 
-static char ILLEGAL_FILE_CHARACTERS[] = {'/',  '\n', '\r', '\t', '\0',
-                                         '\f', '`',  '?',  '*',  '\\',
-                                         '<',  '>',  '|',  '\"', ':'};
+static char ILLEGAL_FILE_CHARACTERS[] = {'/', '\n', '\r', '\t', '\0', '\f', '`',
+    '?', '*', '\\', '<', '>', '|', '\"', ':'};
 
 void SelectWorldScreen::tick() {
   if (_state == _STATE_CREATEWORLD) {
@@ -441,9 +441,9 @@ void SelectWorldScreen::tick() {
 
         // Start a new level with the given name and seed
         LOGI("Creating a level with id '%s', name '%s' and seed '%d'\n",
-             levelId.c_str(), levelName.c_str(), seed);
-        LevelSettings settings(seed, isCreative ? GameType::Creative
-                                                : GameType::Survival);
+            levelId.c_str(), levelName.c_str(), seed);
+        LevelSettings settings(
+            seed, isCreative ? GameType::Creative : GameType::Survival);
         minecraft->selectLevel(levelId, levelName, settings);
         minecraft->hostMultiplayer();
         minecraft->setScreen(new ProgressScreen());
@@ -470,8 +470,7 @@ void SelectWorldScreen::tick() {
       _state = _STATE_CREATEWORLD;
     } else {
       minecraft->selectLevel(worldsList->pickedLevel.id,
-                             worldsList->pickedLevel.name,
-                             LevelSettings::None());
+          worldsList->pickedLevel.name, LevelSettings::None());
       minecraft->hostMultiplayer();
       minecraft->setScreen(new ProgressScreen());
       _hasStartedLevel = true;
@@ -560,8 +559,7 @@ void SelectWorldScreen::keyPressed(int eventKey) {
 //
 TouchDeleteWorldScreen::TouchDeleteWorldScreen(const LevelSummary &level)
     : ConfirmScreen(NULL, "Are you sure you want to delete this world?",
-                    "'" + level.name + "' will be lost forever!", "Delete",
-                    "Cancel", 0),
+          "'" + level.name + "' will be lost forever!", "Delete", "Cancel", 0),
       _level(level) {
   tabButtonIndex = 1;
 }

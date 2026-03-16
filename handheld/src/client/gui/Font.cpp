@@ -144,8 +144,8 @@ void Font::draw(const char *str, float x, float y, int color, bool darken) {
 #endif
 }
 
-void Font::draw(const std::string &str, float x, float y, int color,
-                bool darken) {
+void Font::draw(
+    const std::string &str, float x, float y, int color, bool darken) {
 #ifdef USE_VBO
   drawSlow(str, x, y, color, darken);
   return;
@@ -267,7 +267,7 @@ std::string Font::sanitize(const std::string &str) {
     if (str[i] == '§') {
       i++;
       //} else if (SharedConstants.acceptableLetters.indexOf(str.charAt(i)) >=
-      //0) {
+      // 0) {
     } else {
       sanitized[j++] = str[i];
     }
@@ -275,8 +275,8 @@ std::string Font::sanitize(const std::string &str) {
   return sanitized.erase(j);
 }
 
-void Font::drawWordWrap(const std::string &str, float x, float y, float w,
-                        int col) {
+void Font::drawWordWrap(
+    const std::string &str, float x, float y, float w, int col) {
   char *cstr = new char[str.length() + 1];
   strncpy(cstr, str.c_str(), str.length());
   cstr[str.length()] = 0;
@@ -304,11 +304,11 @@ void Font::drawWordWrap(const std::string &str, float x, float y, float w,
 }
 
 void Font::drawSlow(const std::string &str, float x, float y, int color,
-                    bool darken /*= false*/) {
+    bool darken /*= false*/) {
   drawSlow(str.c_str(), x, y, color, darken);
 }
-void Font::drawSlow(const char *str, float x, float y, int color,
-                    bool darken /*= false*/) {
+void Font::drawSlow(
+    const char *str, float x, float y, int color, bool darken /*= false*/) {
   if (!str)
     return;
 

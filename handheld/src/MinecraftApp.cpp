@@ -101,8 +101,8 @@ void MinecraftApp::init() {
 
 #if !defined(DEMO_MODE) && !defined(APPLE_DEMO_PROMOTION) &&                   \
     !defined(NO_STORAGE)
-  storageSource = new ExternalFileLevelStorageSource(externalStoragePath,
-                                                     externalCacheStoragePath);
+  storageSource = new ExternalFileLevelStorageSource(
+      externalStoragePath, externalCacheStoragePath);
 #else
   storageSource = new MemoryLevelStorageSource();
 #endif
@@ -178,7 +178,7 @@ void MinecraftApp::updateStats() {
   if (now >= lastTime + 1000) {
     if (player) {
       LOGI("%d fps   \t%3d chunk updates.   (%.2f, %.2f, %.2f)\n", _frames,
-           Chunk::updates, player->x, player->y, player->z);
+          Chunk::updates, player->x, player->y, player->z);
       Chunk::resetUpdates();
 
       // static int _n = 0;

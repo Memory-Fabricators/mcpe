@@ -91,10 +91,10 @@ void GameRenderer::setupCamera(float a, int eye) {
     glTranslatef2((float)zoom_x, (float)-zoom_y, 0);
     glScalef2(zoom, zoom, 1);
     gluPerspective(_setupCameraFov = getFov(a, true),
-                   mc->width / (float)mc->height, 0.05f, renderDistance);
+        mc->width / (float)mc->height, 0.05f, renderDistance);
   } else {
     gluPerspective(_setupCameraFov = getFov(a, true),
-                   mc->width / (float)mc->height, 0.05f, renderDistance);
+        mc->width / (float)mc->height, 0.05f, renderDistance);
   }
 
   glMatrixMode(GL_MODELVIEW);
@@ -257,7 +257,7 @@ void GameRenderer::renderLevel(float a) {
     if (useScreenScissor) {
       glEnable2(GL_SCISSOR_TEST);
       glScissor(screenScissorArea.x, screenScissorArea.y, screenScissorArea.w,
-                screenScissorArea.h);
+          screenScissorArea.h);
     }
 
     //         if(mc->options.fancyGraphics) {
@@ -349,12 +349,11 @@ void GameRenderer::renderLevel(float a) {
         TIMER_POP_PUSH("select");
         Player *player = (Player *)cameraEntity;
         if (mc->useTouchscreen()) {
-          levelRenderer->renderHitSelect(
-              player, mc->hitResult, 0, NULL,
+          levelRenderer->renderHitSelect(player, mc->hitResult, 0, NULL,
               a); // player.inventory->getSelected(), a);
         }
         levelRenderer->renderHit(player, mc->hitResult, 0, NULL,
-                                 a); // player->inventory.getSelected(), a);
+            a); // player->inventory.getSelected(), a);
       }
     }
 
@@ -427,18 +426,17 @@ void GameRenderer::moveCameraToPlayer(float a) {
     heightOffset += 1.0;
     glTranslatef(0.0f, 0.3f, 0);
     if (!mc->options.fixedCamera) {
-      int t = mc->level->getTile(Mth::floor(player->x), Mth::floor(player->y),
-                                 Mth::floor(player->z));
+      int t = mc->level->getTile(
+          Mth::floor(player->x), Mth::floor(player->y), Mth::floor(player->z));
       if (t == Tile::bed->id) {
-        int data =
-            mc->level->getData(Mth::floor(player->x), Mth::floor(player->y),
-                               Mth::floor(player->z));
+        int data = mc->level->getData(Mth::floor(player->x),
+            Mth::floor(player->y), Mth::floor(player->z));
 
         int direction = data & 3;
         glRotatef(float(direction * 90), 0, 1, 0);
       }
-      glRotatef(player->yRotO + (player->yRot - player->yRotO) * a + 180, 0, -1,
-                0);
+      glRotatef(
+          player->yRotO + (player->yRot - player->yRotO) * a + 180, 0, -1, 0);
       glRotatef(player->xRotO + (player->xRot - player->xRotO) * a, -1, 0, 0);
     }
   } else if (
@@ -458,9 +456,9 @@ void GameRenderer::moveCameraToPlayer(float a) {
       float yRot = player->yRot;
       float xRot = player->xRot /* + 180.0f*/;
       float xd = -Mth::sin(yRot / 180 * Mth::PI) *
-                 Mth::cos(xRot / 180 * Mth::PI) * cameraDist;
+          Mth::cos(xRot / 180 * Mth::PI) * cameraDist;
       float zd = Mth::cos(yRot / 180 * Mth::PI) *
-                 Mth::cos(xRot / 180 * Mth::PI) * cameraDist;
+          Mth::cos(xRot / 180 * Mth::PI) * cameraDist;
       float yd = -Mth::sin(xRot / 180 * Mth::PI) * cameraDist;
 
       for (int i = 0; i < 8; i++) {
@@ -472,8 +470,7 @@ void GameRenderer::moveCameraToPlayer(float a) {
         yo *= 0.1f;
         zo *= 0.1f;
 
-        HitResult hr = mc->level->clip(
-            Vec3(x + xo, y + yo, z + zo),
+        HitResult hr = mc->level->clip(Vec3(x + xo, y + yo, z + zo),
             Vec3(x - xd + xo + zo, y - yd + yo, z - zd + zo)); // newTemp
         if (hr.type != NO_HIT) {
           float dist = hr.pos.distanceTo(Vec3(x, y, z)); // newTemp
@@ -495,10 +492,10 @@ void GameRenderer::moveCameraToPlayer(float a) {
   }
 
   if (!mc->options.fixedCamera) {
-    glRotatef2(player->xRotO + (player->xRot - player->xRotO) * a, 1.0f, 0.0f,
-               0.0f);
-    glRotatef2(player->yRotO + (player->yRot - player->yRotO) * a + 180, 0, 1,
-               0);
+    glRotatef2(
+        player->xRotO + (player->xRot - player->xRotO) * a, 1.0f, 0.0f, 0.0f);
+    glRotatef2(
+        player->yRotO + (player->yRot - player->yRotO) * a + 180, 0, 1, 0);
     // if (_t_keepPic > 0)
   }
   glTranslatef2(0, heightOffset, 0);
@@ -541,7 +538,7 @@ void GameRenderer::bobView(float a) {
   float bob = player->oBob + (player->bob - player->oBob) * a;
   float tilt = player->oTilt + (player->tilt - player->oTilt) * a;
   glTranslatef2((float)Mth::sin(b * Mth::PI) * bob * 0.5f,
-                -(float)std::abs(Mth::cos(b * Mth::PI) * bob), 0);
+      -(float)std::abs(Mth::cos(b * Mth::PI) * bob), 0);
   glRotatef2((float)Mth::sin(b * Mth::PI) * bob * 3, 0, 0, 1);
   glRotatef2((float)std::abs(Mth::cos(b * Mth::PI - 0.2f) * bob) * 5, 1, 0, 0);
   glRotatef2((float)tilt, 1, 0, 0);
@@ -650,8 +647,8 @@ bool GameRenderer::updateFreeformPickDirection(float a, Vec3 &outDir) {
   // If in 3rd person view - verify that the hit target is within range
   if (!firstPerson && hit.isHit()) {
     const float MaxSqrDist = PickingDistance * PickingDistance;
-    if (mc->cameraTargetPlayer->distanceToSqr((float)hit.x, (float)hit.y,
-                                              (float)hit.z) > MaxSqrDist)
+    if (mc->cameraTargetPlayer->distanceToSqr(
+            (float)hit.x, (float)hit.y, (float)hit.z) > MaxSqrDist)
       mc->hitResult.type = NO_HIT;
   }
   return true;
@@ -798,8 +795,8 @@ void GameRenderer::tick(int nTick, int maxTick) {
   tickFov();
 
   float brr = mc->level->getBrightness(Mth::floor(mc->cameraTargetPlayer->x),
-                                       Mth::floor(mc->cameraTargetPlayer->y),
-                                       Mth::floor(mc->cameraTargetPlayer->z));
+      Mth::floor(mc->cameraTargetPlayer->y),
+      Mth::floor(mc->cameraTargetPlayer->z));
 
   float whiteness = (3 - mc->options.viewDistance) / 3.0f;
   float fogBrT = brr * (1 - whiteness) + whiteness;
@@ -875,8 +872,8 @@ void GameRenderer::setupGuiScreen(bool clearColorBuffer) {
 
   // Setup GUI render mode
   GLbitfield clearBits = clearColorBuffer
-                             ? GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT
-                             : GL_DEPTH_BUFFER_BIT;
+      ? GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT
+      : GL_DEPTH_BUFFER_BIT;
   glClear(clearBits);
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity2();
@@ -899,14 +896,14 @@ void GameRenderer::renderItemInHand(float a, int eye) {
 
   if (!mc->options.thirdPersonView &&
       (mc->cameraTargetPlayer->isPlayer() &&
-       !((Player *)mc->cameraTargetPlayer)->isSleeping())) {
+          !((Player *)mc->cameraTargetPlayer)->isSleeping())) {
     if (!mc->options.hideGui) {
       float fov = getFov(a, false);
       if (fov != _setupCameraFov) {
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
-        gluPerspective(fov, mc->width / (float)mc->height, 0.05f,
-                       renderDistance);
+        gluPerspective(
+            fov, mc->width / (float)mc->height, 0.05f, renderDistance);
         glMatrixMode(GL_MODELVIEW);
       }
       itemInHandRenderer->render(a);
@@ -916,7 +913,7 @@ void GameRenderer::renderItemInHand(float a, int eye) {
   glPopMatrix2();
   if (!mc->options.thirdPersonView &&
       (mc->cameraTargetPlayer->isPlayer() &&
-       !((Player *)mc->cameraTargetPlayer)->isSleeping())) {
+          !((Player *)mc->cameraTargetPlayer)->isSleeping())) {
     itemInHandRenderer->renderScreenEffect(a);
     bobHurt(a);
   }
@@ -943,15 +940,15 @@ void GameRenderer::saveMatrices() {
   glGetFloatv(GL_MODELVIEW_MATRIX, lastModelMatrix);
 }
 
-void GameRenderer::prepareAndRenderClouds(LevelRenderer *levelRenderer,
-                                          float a) {
+void GameRenderer::prepareAndRenderClouds(
+    LevelRenderer *levelRenderer, float a) {
   // if(mc->options.isCloudsOn()) {
   TIMER_PUSH("clouds");
   glMatrixMode(GL_PROJECTION);
   glPushMatrix2();
   glLoadIdentity2();
   gluPerspective(_setupCameraFov = getFov(a, true),
-                 mc->width / (float)mc->height, 2, renderDistance * 512);
+      mc->width / (float)mc->height, 2, renderDistance * 512);
   glMatrixMode(GL_MODELVIEW);
   glPushMatrix2();
   setupFog(0);

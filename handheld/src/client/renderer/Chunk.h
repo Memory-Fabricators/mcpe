@@ -17,7 +17,7 @@ class Chunk {
 
 public:
   Chunk(Level *level_, int x, int y, int z, int size, int lists_,
-        GLuint *ptrBuf = NULL);
+      GLuint *ptrBuf = NULL);
 
   void setPos(int x, int y, int z);
 

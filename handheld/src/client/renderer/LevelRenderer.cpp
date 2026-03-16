@@ -176,9 +176,8 @@ void LevelRenderer::allChanged() {
     for (int y = 0; y < yChunks; y++) {
       for (int z = 0; z < zChunks; z++) {
         const int c = getLinearCoord(x, y, z);
-        Chunk *chunk =
-            new Chunk(level, x * CHUNK_SIZE, y * CHUNK_SIZE, z * CHUNK_SIZE,
-                      CHUNK_SIZE, chunkLists + id, &chunkBuffers[id]);
+        Chunk *chunk = new Chunk(level, x * CHUNK_SIZE, y * CHUNK_SIZE,
+            z * CHUNK_SIZE, CHUNK_SIZE, chunkLists + id, &chunkBuffers[id]);
 
         if (occlusionCheck) {
           chunk->occlusion_id = 0; // occlusionCheckIds.get(count);
@@ -201,8 +200,8 @@ void LevelRenderer::allChanged() {
   if (level != NULL) {
     Entity *player = mc->cameraTargetPlayer;
     if (player != NULL) {
-      this->resortChunks(Mth::floor(player->x), Mth::floor(player->y),
-                         Mth::floor(player->z));
+      this->resortChunks(
+          Mth::floor(player->x), Mth::floor(player->y), Mth::floor(player->z));
       DistanceChunkSorter distanceSorter(player);
       std::sort(sortedChunks, sortedChunks + chunksLength, distanceSorter);
     }
@@ -296,8 +295,9 @@ int LevelRenderer::render(Mob *player, int layer, float alpha) {
   for (int i = 0; i < 10; i++) {
     chunkFixOffs = (chunkFixOffs + 1) % chunksLength;
     Chunk *c = chunks[chunkFixOffs];
-    if (c->isDirty() && std::find(dirtyChunks.begin(), dirtyChunks.end(), c) ==
-                            dirtyChunks.end()) {
+    if (c->isDirty() &&
+        std::find(dirtyChunks.begin(), dirtyChunks.end(), c) ==
+            dirtyChunks.end()) {
       dirtyChunks.push_back(c);
     }
   }
@@ -322,8 +322,8 @@ int LevelRenderer::render(Mob *player, int layer, float alpha) {
     yOld = player->y;
     zOld = player->z;
 
-    resortChunks(Mth::floor(player->x), Mth::floor(player->y),
-                 Mth::floor(player->z));
+    resortChunks(
+        Mth::floor(player->x), Mth::floor(player->y), Mth::floor(player->z));
     DistanceChunkSorter distanceSorter(player);
     std::sort(sortedChunks, sortedChunks + chunksLength, distanceSorter);
   }
@@ -748,7 +748,7 @@ bool LevelRenderer::updateDirtyChunks(Mob *player, bool force) {
 }
 
 void LevelRenderer::renderHit(Player *player, const HitResult &h, int mode,
-                              /*ItemInstance*/ void *inventoryItem, float a) {
+    /*ItemInstance*/ void *inventoryItem, float a) {
   if (mode == 0) {
     if (destroyProgress > 0) {
       Tesselator &t = Tesselator::instance;
@@ -817,9 +817,8 @@ void LevelRenderer::renderHit(Player *player, const HitResult &h, int mode,
 }
 
 void LevelRenderer::renderHitOutline(Player *player, const HitResult &h,
-                                     int mode,
-                                     /*ItemInstance*/ void *inventoryItem,
-                                     float a) {
+    int mode,
+    /*ItemInstance*/ void *inventoryItem, float a) {
   if (mode == 0 && h.type == TILE) {
     glEnable2(GL_BLEND);
     glBlendFunc2(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -836,9 +835,9 @@ void LevelRenderer::renderHitOutline(Player *player, const HitResult &h,
       float yo = player->yOld + (player->y - player->yOld) * a;
       float zo = player->zOld + (player->z - player->zOld) * a;
       render(Tile::tiles[tileId]
-                 ->getTileAABB(level, h.x, h.y, h.z)
-                 .grow(ss, ss, ss)
-                 .cloneMove(-xo, -yo, -zo));
+              ->getTileAABB(level, h.x, h.y, h.z)
+              .grow(ss, ss, ss)
+              .cloneMove(-xo, -yo, -zo));
     }
     glDepthMask(true);
     glEnable2(GL_TEXTURE_2D);
@@ -882,8 +881,8 @@ void LevelRenderer::tileChanged(int x, int y, int z) {
   setDirty(x - 1, y - 1, z - 1, x + 1, y + 1, z + 1);
 }
 
-void LevelRenderer::setTilesDirty(int x0, int y0, int z0, int x1, int y1,
-                                  int z1) {
+void LevelRenderer::setTilesDirty(
+    int x0, int y0, int z0, int x1, int y1, int z1) {
   setDirty(x0 - 1, y0 - 1, z0 - 1, x1 + 1, y1 + 1, z1 + 1);
 }
 
@@ -920,8 +919,8 @@ void LevelRenderer::renderEntities(Vec3 cam, Culler *culler, float a) {
   }
 
   TIMER_PUSH("prepare");
-  TileEntityRenderDispatcher::getInstance()->prepare(level, textures, mc->font,
-                                                     mc->cameraTargetPlayer, a);
+  TileEntityRenderDispatcher::getInstance()->prepare(
+      level, textures, mc->font, mc->cameraTargetPlayer, a);
   EntityRenderDispatcher::getInstance()->prepare(
       level, mc->font, mc->cameraTargetPlayer, &mc->options, a);
 
@@ -957,7 +956,7 @@ void LevelRenderer::renderEntities(Vec3 cam, Culler *culler, float a) {
         if (entity == mc->cameraTargetPlayer && !mc->options.thirdPersonView)
           continue;
         if (!level->hasChunkAt(Mth::floor(entity->x), Mth::floor(entity->y),
-                               Mth::floor(entity->z)))
+                Mth::floor(entity->z)))
           continue;
 
         toRender[renderedEntities++] = entity;
@@ -966,8 +965,8 @@ void LevelRenderer::renderEntities(Vec3 cam, Culler *culler, float a) {
     }
 
     if (renderedEntities > 0) {
-      std::sort(&toRender[0], &toRender[renderedEntities],
-                entityRenderPredicate);
+      std::sort(
+          &toRender[0], &toRender[renderedEntities], entityRenderPredicate);
       for (int i = 0; i < renderedEntities; ++i) {
         EntityRenderDispatcher *disp = EntityRenderDispatcher::getInstance();
         disp->render(toRender[i], a);
@@ -979,8 +978,8 @@ void LevelRenderer::renderEntities(Vec3 cam, Culler *culler, float a) {
 
   TIMER_POP_PUSH("tileentities");
   for (unsigned int i = 0; i < level->tileEntities.size(); i++) {
-    TileEntityRenderDispatcher::getInstance()->render(level->tileEntities[i],
-                                                      a);
+    TileEntityRenderDispatcher::getInstance()->render(
+        level->tileEntities[i], a);
   }
 
   glDisableClientState2(GL_VERTEX_ARRAY);
@@ -1073,7 +1072,7 @@ void LevelRenderer::renderClouds(float alpha) {
   zo -= zOffs * 2048;
 
   float yy = /*level.dimension.getCloudHeight()*/ 128 - yOffs +
-             0.33f; // mc->player->y + 1;
+      0.33f; // mc->player->y + 1;
   float uo = (float)(xo * scale);
   float vo = (float)(zo * scale);
   t.begin();
@@ -1081,12 +1080,12 @@ void LevelRenderer::renderClouds(float alpha) {
   t.color(cr, cg, cb, 0.8f);
   for (int xx = -s * d; xx < +s * d; xx += s) {
     for (int zz = -s * d; zz < +s * d; zz += s) {
-      t.vertexUV((float)xx, yy, (float)zz + s, xx * scale + uo,
-                 (zz + s) * scale + vo);
+      t.vertexUV(
+          (float)xx, yy, (float)zz + s, xx * scale + uo, (zz + s) * scale + vo);
       t.vertexUV((float)xx + s, yy, (float)zz + s, (xx + s) * scale + uo,
-                 (zz + s) * scale + vo);
-      t.vertexUV((float)xx + s, yy, (float)zz, (xx + s) * scale + uo,
-                 zz * scale + vo);
+          (zz + s) * scale + vo);
+      t.vertexUV(
+          (float)xx + s, yy, (float)zz, (xx + s) * scale + uo, zz * scale + vo);
       t.vertexUV((float)xx, yy, (float)zz, xx * scale + uo, zz * scale + vo);
     }
   }
@@ -1097,7 +1096,7 @@ void LevelRenderer::renderClouds(float alpha) {
 }
 
 void LevelRenderer::playSound(const std::string &name, float x, float y,
-                              float z, float volume, float pitch) {
+    float z, float volume, float pitch) {
   // @todo: deny sounds here if sound is off (rather than waiting 'til
   // SoundEngine)
   float dd = 16;
@@ -1110,8 +1109,7 @@ void LevelRenderer::playSound(const std::string &name, float x, float y,
 }
 
 void LevelRenderer::addParticle(const std::string &name, float x, float y,
-                                float z, float xa, float ya, float za,
-                                int data) {
+    float z, float xa, float ya, float za, int data) {
 
   float xd = mc->cameraTargetPlayer->x - x;
   float yd = mc->cameraTargetPlayer->y - y;
@@ -1159,8 +1157,8 @@ void LevelRenderer::addParticle(const std::string &name, float x, float y,
   else if (name == "reddust")
     mc->particleEngine->add(new RedDustParticle(level, x, y, z, xa, ya, za));
   else if (name == "iconcrack")
-    mc->particleEngine->add(new BreakingItemParticle(level, x, y, z, xa, ya, za,
-                                                     Item::items[data]));
+    mc->particleEngine->add(new BreakingItemParticle(
+        level, x, y, z, xa, ya, za, Item::items[data]));
   else if (name == "snowballpoof")
     mc->particleEngine->add(
         new BreakingItemParticle(level, x, y, z, Item::snowBall));
@@ -1249,9 +1247,8 @@ z, xa, ya, za); break;
 */
 
 void LevelRenderer::renderHitSelect(Player *player, const HitResult &h,
-                                    int mode,
-                                    /*ItemInstance*/ void *inventoryItem,
-                                    float a) {
+    int mode,
+    /*ItemInstance*/ void *inventoryItem, float a) {
   // if (h.type == TILE) LOGI("type: %s @ (%d, %d, %d)\n",
   // Tile::tiles[level->getTile(h.x, h.y, h.z)]->getDescriptionId().c_str(),
   // h.x, h.y, h.z);
@@ -1355,21 +1352,21 @@ void LevelRenderer::takePicture(TripodCamera *cam, Entity *entity) {
   // Save image
   static char filename[256];
   snprintf(filename, 256, "%s/games/com.mojang/img_%.4d.jpg",
-           mc->externalStoragePath.c_str(), getTimeMs());
+      mc->externalStoragePath.c_str(), getTimeMs());
 
   mc->platform()->saveScreenshot(filename, mc->width, mc->height);
 }
 
-void LevelRenderer::levelEvent(Player *player, int type, int x, int y, int z,
-                               int data) {
+void LevelRenderer::levelEvent(
+    Player *player, int type, int x, int y, int z, int data) {
   switch (type) {
   case LevelEvent::SOUND_OPEN_DOOR:
     if (Mth::random() < 0.5f) {
       level->playSound(x + 0.5f, y + 0.5f, z + 0.5f, "random.door_open", 1,
-                       level->random.nextFloat() * 0.1f + 0.9f);
+          level->random.nextFloat() * 0.1f + 0.9f);
     } else {
       level->playSound(x + 0.5f, y + 0.5f, z + 0.5f, "random.door_close", 1,
-                       level->random.nextFloat() * 0.1f + 0.9f);
+          level->random.nextFloat() * 0.1f + 0.9f);
     }
     break;
   }

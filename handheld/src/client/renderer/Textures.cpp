@@ -27,7 +27,7 @@ void Textures::clear() {
       glDeleteTextures(1, &it->second);
   }
   for (TextureImageMap::iterator it = loadedImages.begin();
-       it != loadedImages.end(); ++it) {
+      it != loadedImages.end(); ++it) {
     if (!(it->second).memoryHandledExternally)
       delete[] (it->second).data;
   }
@@ -51,8 +51,8 @@ TextureId Textures::loadAndBindTexture(const std::string &resourceName) {
   return id;
 }
 
-TextureId Textures::loadTexture(const std::string &resourceName,
-                                bool inTextureFolder /* = true */) {
+TextureId Textures::loadTexture(
+    const std::string &resourceName, bool inTextureFolder /* = true */) {
   TextureMap::iterator it = idMap.find(resourceName);
   if (it != idMap.end())
     return it->second;
@@ -70,16 +70,16 @@ TextureId Textures::loadTexture(const std::string &resourceName,
   return Textures::InvalidId;
 }
 
-TextureId Textures::assignTexture(const std::string &resourceName,
-                                  const TextureData &img) {
+TextureId Textures::assignTexture(
+    const std::string &resourceName, const TextureData &img) {
   TextureId id;
   glGenTextures(1, &id);
 
   bind(id);
 
   if (MIPMAP) {
-    glTexParameteri2(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-                     GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri2(
+        GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri2(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   } else {
     glTexParameteri2(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -105,8 +105,8 @@ TextureId Textures::assignTexture(const std::string &resourceName,
 #if defined(__APPLE__)
     int fmt = img.transparent ? GL_COMPRESSED_RGBA_PVRTC_4BPPV1_IMG
                               : GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG;
-    glCompressedTexImage2D(GL_TEXTURE_2D, 0, fmt, img.w, img.h, 0, img.numBytes,
-                           img.data);
+    glCompressedTexImage2D(
+        GL_TEXTURE_2D, 0, fmt, img.w, img.h, 0, img.numBytes, img.data);
 #endif
     break;
   }
@@ -116,16 +116,16 @@ TextureId Textures::assignTexture(const std::string &resourceName,
 
     if (img.format == TEXF_UNCOMPRESSED_565) {
       glTexImage2D2(GL_TEXTURE_2D, 0, mode, img.w, img.h, 0, mode,
-                    GL_UNSIGNED_SHORT_5_6_5, img.data);
+          GL_UNSIGNED_SHORT_5_6_5, img.data);
     } else if (img.format == TEXF_UNCOMPRESSED_4444) {
       glTexImage2D2(GL_TEXTURE_2D, 0, mode, img.w, img.h, 0, mode,
-                    GL_UNSIGNED_SHORT_4_4_4_4, img.data);
+          GL_UNSIGNED_SHORT_4_4_4_4, img.data);
     } else if (img.format == TEXF_UNCOMPRESSED_5551) {
       glTexImage2D2(GL_TEXTURE_2D, 0, mode, img.w, img.h, 0, mode,
-                    GL_UNSIGNED_SHORT_5_5_5_1, img.data);
+          GL_UNSIGNED_SHORT_5_5_5_1, img.data);
     } else {
       glTexImage2D2(GL_TEXTURE_2D, 0, mode, img.w, img.h, 0, mode,
-                    GL_UNSIGNED_BYTE, img.data);
+          GL_UNSIGNED_BYTE, img.data);
     }
     break;
   }
@@ -155,8 +155,8 @@ void Textures::tick(bool uploadToGraphicsCard) {
       for (int xx = 0; xx < tex->replicate; xx++)
         for (int yy = 0; yy < tex->replicate; yy++) {
           glTexSubImage2D2(GL_TEXTURE_2D, 0, tex->tex % 16 * 16 + xx * 16,
-                           tex->tex / 16 * 16 + yy * 16, 16, 16, GL_RGBA,
-                           GL_UNSIGNED_BYTE, tex->pixels);
+              tex->tex / 16 * 16 + yy * 16, 16, 16, GL_RGBA, GL_UNSIGNED_BYTE,
+              tex->pixels);
         }
     }
   }
@@ -208,7 +208,7 @@ int Textures::smoothBlend(int c0, int c1) {
   int a0 = (int)(((c0 & 0xff000000) >> 24)) & 0xff;
   int a1 = (int)(((c1 & 0xff000000) >> 24)) & 0xff;
   return ((a0 + a1) >> 1 << 24) +
-         (((c0 & 0x00fefefe) + (c1 & 0x00fefefe)) >> 1);
+      (((c0 & 0x00fefefe) + (c1 & 0x00fefefe)) >> 1);
 }
 
 int Textures::crispBlend(int c0, int c1) {

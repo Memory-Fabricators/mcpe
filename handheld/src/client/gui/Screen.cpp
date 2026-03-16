@@ -100,8 +100,8 @@ void Screen::renderDirtBackground(int vo) {
   t.begin();
   t.color(0x404040);
   t.vertexUV(0, (float)height, 0, 0, height / s + fvo);
-  t.vertexUV((float)width, (float)height, 0, width / s,
-             (float)height / s + fvo);
+  t.vertexUV(
+      (float)width, (float)height, 0, width / s, (float)height / s + fvo);
   t.vertexUV((float)width, 0, 0, (float)width / s, 0 + fvo);
   t.vertexUV(0, 0, 0, 0, 0 + fvo);
   t.draw();
@@ -187,7 +187,7 @@ void Screen::mouseReleased(int x, int y, int buttonNum) {
       clickedButton->released(x, y);
     }
   }
-#else  //	} else {
+#else //	} else {
   clickedButton->released(x, y);
 #endif // }
   clickedButton = NULL;
@@ -199,7 +199,7 @@ bool Screen::hasClippingArea(IntRectangle &out) { return false; }
 
 void Screen::lostFocus() {
   for (std::vector<TextBox *>::iterator it = textBoxes.begin();
-       it != textBoxes.end(); ++it) {
+      it != textBoxes.end(); ++it) {
     TextBox *tb = *it;
     tb->loseFocus(minecraft);
   }

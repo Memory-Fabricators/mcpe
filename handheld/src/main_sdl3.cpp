@@ -1,4 +1,3 @@
-#pragma once
 #include "MinecraftApp.h"
 #include "client/renderer/gles.h"
 #include <cassert>
@@ -22,29 +21,34 @@
 int width = 848;
 int height = 480;
 
-static void png_funcReadFile(png_structp pngPtr, png_bytep data,
-                             png_size_t length) {
+static void png_funcReadFile(
+    png_structp pngPtr, png_bytep data, png_size_t length) {
   ((std::istream *)png_get_io_ptr(pngPtr))->read((char *)data, length);
 }
 
 class AppPlatform_SDL3 : public AppPlatform {
 public:
-  bool isTouchscreen() { return false; }
+  static auto isTouchscreen() -> bool { return false; }
+  auto supportsTouchscreen() -> bool override { return false; }
 
-  std::vector<std::string> getDataSearchPaths() const {
+  static auto getDataSearchPaths() -> std::vector<std::string> {
     std::vector<std::string> paths;
     auto addPath = [&](const std::string &p) {
-      if (p.empty())
+      if (p.empty()) {
         return;
+      }
       std::string out = p;
-      while (!out.empty() && out.back() == '/')
+      while (!out.empty() && out.back() == '/') {
         out.pop_back();
-      if (!out.empty())
+      }
+      if (!out.empty()) {
         paths.push_back(out);
+      }
     };
 
-    if (const char *env = std::getenv("MCPE_DATA_DIR"))
+    if (const char *env = std::getenv("MCPE_DATA_DIR")) {
       addPath(env);
+    }
 
 #ifdef MCPE_INSTALL_DATA_DIR
     addPath(MCPE_INSTALL_DATA_DIR);
@@ -54,7 +58,7 @@ public:
     addPath("/usr/local/share/mcpe");
 
     const char *base = SDL_GetBasePath();
-    if (base) {
+    if (base != nullptr) {
       std::string basePath(base);
       addPath(basePath + "/data");
       addPath(basePath + "/../share/mcpe");
@@ -66,34 +70,36 @@ public:
     return paths;
   }
 
-  BinaryBlob readAssetFile(const std::string &filename) override {
+  auto readAssetFile(const std::string &filename) -> BinaryBlob override {
     const auto roots = getDataSearchPaths();
     for (const auto &root : roots) {
       std::string path = root + "/" + filename;
       std::ifstream file(path.c_str(), std::ios::binary);
-      if (!file)
+      if (!file) {
         continue;
+      }
 
       file.seekg(0, std::ios::end);
       std::streamsize size = file.tellg();
-      if (size <= 0)
+      if (size <= 0) {
         continue;
+      }
       file.seekg(0, std::ios::beg);
 
-      unsigned char *data = new unsigned char[(size_t)size];
+      auto *data = new unsigned char[(size_t)size];
       if (!file.read(reinterpret_cast<char *>(data), size)) {
         delete[] data;
         continue;
       }
 
-      return BinaryBlob(data, (unsigned int)size);
+      return {data, (unsigned int)size};
     }
 
-    return BinaryBlob();
+    return {};
   }
 
-  TextureData loadTexture(const std::string &filename_,
-                          bool textureFolder) override {
+  auto loadTexture(const std::string &filename_, bool textureFolder)
+      -> TextureData override {
     TextureData out;
 
     std::string rel = textureFolder ? "images/" + filename_ : filename_;
@@ -101,19 +107,21 @@ public:
     for (const auto &root : roots) {
       std::string filename = root + "/" + rel;
       std::ifstream source(filename.c_str(), std::ios::binary);
-      if (!source)
+      if (!source) {
         continue;
+      }
 
       png_structp pngPtr =
-          png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+          png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
 
-      if (!pngPtr)
+      if (pngPtr == nullptr) {
         return out;
+}
 
       png_infop infoPtr = png_create_info_struct(pngPtr);
 
-      if (!infoPtr) {
-        png_destroy_read_struct(&pngPtr, NULL, NULL);
+      if (infoPtr == nullptr) {
+        png_destroy_read_struct(&pngPtr, nullptr, nullptr);
         return out;
       }
 
@@ -154,7 +162,7 @@ static bool _app_inited = false;
 static int _app_window_normal = true;
 
 static void move_surface(App *app, AppContext *state, uint32_t x, uint32_t y,
-                         uint32_t w, uint32_t h);
+    uint32_t w, uint32_t h);
 
 static void initEgl(App *app, AppContext *state, uint32_t w, uint32_t h) {
   move_surface(app, state, 16, 16, w, h);
@@ -175,7 +183,7 @@ static void deinitEgl(AppContext *state) {
 }
 
 void move_surface(App *app, AppContext *state, uint32_t x, uint32_t y,
-                  uint32_t w, uint32_t h) {
+    uint32_t w, uint32_t h) {
   int32_t success = 0;
 
   deinitEgl(state);
@@ -387,11 +395,12 @@ int main(int argc, char **argv) {
   context.doRender = true;
   context.platform = &platform;
 
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
+  SDL_GL_SetAttribute(
+      SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 1);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-  context.window = SDL_CreateWindow("Minecraft", width, height,
-                                    SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+  context.window = SDL_CreateWindow(
+      "Minecraft", width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
   if (!context.window) {
     fprintf(stderr, "Failed to create window: %s\n", SDL_GetError());
     return EXIT_FAILURE;

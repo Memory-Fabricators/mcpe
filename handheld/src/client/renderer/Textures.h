@@ -37,12 +37,12 @@ public:
       LOGI("invalidId!\n");
     }
   }
-  TextureId loadTexture(const std::string &resourceName,
-                        bool inTextureFolder = true);
+  TextureId loadTexture(
+      const std::string &resourceName, bool inTextureFolder = true);
   TextureId loadAndBindTexture(const std::string &resourceName);
 
-  TextureId assignTexture(const std::string &resourceName,
-                          const TextureData &img);
+  TextureId assignTexture(
+      const std::string &resourceName, const TextureData &img);
   const TextureData *getTemporaryTextureData(TextureId id);
 
   void tick(bool uploadToGraphicsCard);

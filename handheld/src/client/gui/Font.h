@@ -36,10 +36,10 @@ public:
 
 private:
   void buildChar(unsigned char i, float x = 0, float y = 0);
-  void drawSlow(const std::string &str, float x, float y, int color,
-                bool darken = false);
-  void drawSlow(const char *str, float x, float y, int color,
-                bool darken = false);
+  void drawSlow(
+      const std::string &str, float x, float y, int color, bool darken = false);
+  void drawSlow(
+      const char *str, float x, float y, int color, bool darken = false);
 
 public:
   int fontTexture;

@@ -3,8 +3,8 @@
 #include <cstdio>
 #include <cstring>
 
-Tesselator Tesselator::instance(sizeof(GLfloat) *
-                                MAX_FLOATS); // max size in bytes
+Tesselator Tesselator::instance(
+    sizeof(GLfloat) * MAX_FLOATS); // max size in bytes
 
 const int VertexSizeBytes = sizeof(VERTEX);
 
@@ -72,7 +72,7 @@ RenderChunk Tesselator::end(bool useMine, int bufferId) {
     bufferId = vboIds[vboId];
 #endif
     int access = GL_STATIC_DRAW; //(accessMode==ACCESS_DYNAMIC) ?
-                                 //GL_DYNAMIC_DRAW : GL_STATIC_DRAW;
+                                 // GL_DYNAMIC_DRAW : GL_STATIC_DRAW;
     int bytes = p * sizeof(VERTEX);
     glBindBuffer2(GL_ARRAY_BUFFER, bufferId);
     glBufferData2(GL_ARRAY_BUFFER, bytes, _varray, access); // GL_STREAM_DRAW
@@ -350,7 +350,7 @@ void Tesselator::draw() {
     int bufferId = vboIds[vboId];
 
     int access = GL_DYNAMIC_DRAW; //(accessMode==ACCESS_DYNAMIC) ?
-                                  //GL_DYNAMIC_DRAW : GL_STATIC_DRAW;
+                                  // GL_DYNAMIC_DRAW : GL_STATIC_DRAW;
     int bytes = p * sizeof(VERTEX);
     glBindBuffer2(GL_ARRAY_BUFFER, bufferId);
     glBufferData2(GL_ARRAY_BUFFER, bytes, _varray, access); // GL_STREAM_DRAW

@@ -87,7 +87,7 @@ void StartMenuScreen::setupPositions() {
 
   copyrightPosX = width - minecraft->font->width(copyright) - 1;
   versionPosX = (width - minecraft->font->width(version)) /
-                2; // - minecraft->font->width(version) - 2;
+      2; // - minecraft->font->width(version) - 2;
 }
 
 void StartMenuScreen::tick() { _updateLicense(); }

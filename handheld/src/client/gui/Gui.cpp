@@ -157,15 +157,15 @@ RectangleArea Gui::getRectangleArea(int extendSide) {
 
   if (extendSide < 0)
     return RectangleArea(0, (float)minecraft->height - pHeight,
-                         pCenterX + pHalfWidth + 2, (float)minecraft->height);
+        pCenterX + pHalfWidth + 2, (float)minecraft->height);
   if (extendSide > 0)
     return RectangleArea(pCenterX - pHalfWidth,
-                         (float)minecraft->height - pHeight,
-                         (float)minecraft->width, (float)minecraft->height);
+        (float)minecraft->height - pHeight, (float)minecraft->width,
+        (float)minecraft->height);
 
   return RectangleArea(pCenterX - pHalfWidth,
-                       (float)minecraft->height - pHeight,
-                       pCenterX + pHalfWidth + 2, (float)minecraft->height);
+      (float)minecraft->height - pHeight, pCenterX + pHalfWidth + 2,
+      (float)minecraft->height);
 }
 
 void Gui::handleClick(int button, int x, int y) {
@@ -218,8 +218,8 @@ void Gui::addMessage(const std::string &_string) {
   std::string string = _string;
   while (minecraft->font->width(string) > MAX_MESSAGE_WIDTH) {
     unsigned int i = 1;
-    while (i < string.length() && minecraft->font->width(string.substr(
-                                      0, i + 1)) <= MAX_MESSAGE_WIDTH) {
+    while (i < string.length() &&
+        minecraft->font->width(string.substr(0, i + 1)) <= MAX_MESSAGE_WIDTH) {
       i++;
     }
     addMessage(string.substr(0, i));
@@ -281,12 +281,12 @@ void Gui::renderSlot(int slot, int x, int y, float a) {
   }
 
   const bool fancy = true;
-  ItemRenderer::renderGuiItem(minecraft->font, minecraft->textures, item,
-                              (float)x, (float)y, fancy);
+  ItemRenderer::renderGuiItem(
+      minecraft->font, minecraft->textures, item, (float)x, (float)y, fancy);
 }
 
-void Gui::renderSlotText(const ItemInstance *item, float x, float y,
-                         bool hasFinite, bool shadow) {
+void Gui::renderSlotText(
+    const ItemInstance *item, float x, float y, bool hasFinite, bool shadow) {
   // if (!item || item->getItem()->getMaxStackSize() <= 1) {
   if (item->count <= 1) {
     return;
@@ -302,11 +302,11 @@ void Gui::renderSlotText(const ItemInstance *item, float x, float y,
 
   // LOGI("slot: %d - %s\n", slot, buffer);
   if (shadow)
-    minecraft->font->drawShadow(buffer, x, y,
-                                item->count > 0 ? 0xffcccccc : 0x60cccccc);
+    minecraft->font->drawShadow(
+        buffer, x, y, item->count > 0 ? 0xffcccccc : 0x60cccccc);
   else
-    minecraft->font->draw(buffer, x, y,
-                          item->count > 0 ? 0xffcccccc : 0x60cccccc);
+    minecraft->font->draw(
+        buffer, x, y, item->count > 0 ? 0xffcccccc : 0x60cccccc);
 }
 
 void Gui::inventoryUpdated() { _inventoryNeedsUpdate = true; }
@@ -479,15 +479,13 @@ float Gui::cubeSmoothStep(float percentage, float min, float max) {
 }
 
 void Gui::renderProgressIndicator(const bool isTouchInterface,
-                                  const int screenWidth, const int screenHeight,
-                                  float a) {
+    const int screenWidth, const int screenHeight, float a) {
   ItemInstance *currentItem = minecraft->player->inventory->getSelected();
   bool bowEquipped =
       currentItem != NULL ? currentItem->getItem() == Item::bow : false;
-  bool itemInUse =
-      currentItem != NULL
-          ? currentItem->getItem() == minecraft->player->getUseItem()->getItem()
-          : false;
+  bool itemInUse = currentItem != NULL
+      ? currentItem->getItem() == minecraft->player->getUseItem()->getItem()
+      : false;
   if (!isTouchInterface || minecraft->options.isJoyTouchArea ||
       (bowEquipped && itemInUse)) {
     minecraft->textures->loadAndBindTexture("gui/icons.png");
@@ -513,8 +511,8 @@ void Gui::renderProgressIndicator(const bool isTouchInterface,
       const float x = InvGuiScale * minecraft->inputHolder->mousex;
       const float y = InvGuiScale * minecraft->inputHolder->mousey;
       glTranslatef2(x, y, 0);
-      drawArrayVT(rcFeedbackOuter.vboId, rcFeedbackOuter.vertexCount, 24,
-                  GL_TRIANGLES);
+      drawArrayVT(
+          rcFeedbackOuter.vboId, rcFeedbackOuter.vertexCount, 24, GL_TRIANGLES);
       glTranslatef2(-x, -y, 0);
 
       glEnable2(GL_TEXTURE_2D);
@@ -535,14 +533,14 @@ void Gui::renderProgressIndicator(const bool isTouchInterface,
       const float y = InvGuiScale * minecraft->inputHolder->mousey;
       glPushMatrix2();
       glTranslatef2(x, y, 0);
-      drawArrayVT(rcFeedbackOuter.vboId, rcFeedbackOuter.vertexCount, 24,
-                  GL_TRIANGLES);
+      drawArrayVT(
+          rcFeedbackOuter.vboId, rcFeedbackOuter.vertexCount, 24, GL_TRIANGLES);
       glScalef2(0.5f + progress, 0.5f + progress, 1);
       // glDisable2(GL_CULL_FACE);
       glColor4f2(1, 1, 1, 1);
       glBlendFunc2(GL_ONE_MINUS_DST_COLOR, GL_ONE_MINUS_SRC_COLOR);
       drawArrayVT(rcFeedbackInner.vboId, rcFeedbackInner.vertexCount, 24,
-                  GL_TRIANGLE_FAN);
+          GL_TRIANGLE_FAN);
       glPopMatrix2();
 
       glDisable(GL_BLEND);
@@ -603,11 +601,11 @@ void Gui::renderHearts() {
 void Gui::renderBubbles() {
   if (minecraft->player->isUnderLiquid(Material::water)) {
     int yo = 12;
-    int count = (int)std::ceil((minecraft->player->airSupply - 2) * 10.0f /
-                               Player::TOTAL_AIR_SUPPLY);
+    int count = (int)std::ceil(
+        (minecraft->player->airSupply - 2) * 10.0f / Player::TOTAL_AIR_SUPPLY);
     int extra = (int)std::ceil((minecraft->player->airSupply) * 10.0f /
-                               Player::TOTAL_AIR_SUPPLY) -
-                count;
+                    Player::TOTAL_AIR_SUPPLY) -
+        count;
     for (int i = 0; i < count + extra; i++) {
       int xo = i * 8 + 2;
       if (i < count)
@@ -646,16 +644,17 @@ void Gui::renderSleepAnimation(const int screenWidth, const int screenHeight) {
   float amount = (float)timer / (float)Player::SLEEP_DURATION;
   if (amount > 1) {
     // waking up
-    amount = 1.0f - ((float)(timer - Player::SLEEP_DURATION) /
-                     (float)Player::WAKE_UP_DURATION);
+    amount = 1.0f -
+        ((float)(timer - Player::SLEEP_DURATION) /
+            (float)Player::WAKE_UP_DURATION);
   }
 
   int color = (int)(220.0f * amount) << 24 | (0x101020);
   fill(0, 0, screenWidth, screenHeight, color);
 }
 
-void Gui::renderOnSelectItemNameText(const int screenWidth, Font *font,
-                                     int ySlot) {
+void Gui::renderOnSelectItemNameText(
+    const int screenWidth, Font *font, int ySlot) {
   if (itemNameOverlayTime < 1.0f) {
     ItemInstance *item = minecraft->player->inventory->getSelected();
     if (item != NULL) {
@@ -673,8 +672,8 @@ void Gui::renderOnSelectItemNameText(const int screenWidth, Font *font,
   }
 }
 
-void Gui::renderChatMessages(const int screenHeight, unsigned int max,
-                             bool isChatting, Font *font) {
+void Gui::renderChatMessages(
+    const int screenHeight, unsigned int max, bool isChatting, Font *font) {
   //        if (minecraft.screen instanceof ChatScreen) {
   //            max = 20;
   //            isChatting = true;
@@ -750,9 +749,10 @@ void Gui::renderToolBar(float a, int ySlot, const int screenWidth) {
       _flashSlotId = -1;
     else {
       int x = screenWidth / 2 - getNumSlots() * 10 + _flashSlotId * 20 + 2;
-      int color = 0xffffff + (((int)(/*0x80 * since +*/ 0x51 -
-                                     0x50 * Mth::cos(10 * 6.28f * since)))
-                              << 24);
+      int color = 0xffffff +
+          (((int)(/*0x80 * since +*/ 0x51 -
+               0x50 * Mth::cos(10 * 6.28f * since)))
+              << 24);
       // LOGI("Color: %.8x\n", color);
       fill(x, ySlot, x + 16, ySlot + 16, color);
     }
@@ -780,7 +780,7 @@ void Gui::renderToolBar(float a, int ySlot, const int screenWidth) {
 
   // int x = screenWidth / 2 + getNumSlots() * 10 + (getNumSlots()-1) * 20 + 2;
   blit(screenWidth / 2 + 10 * getNumSlots() - 20 + 4, ySlot + 6, 242, 252, 14,
-       4, 14, 4);
+      4, 14, 4);
 
   minecraft->textures->loadAndBindTexture("gui/gui_blocks.png");
   t.endOverrideAndDraw();

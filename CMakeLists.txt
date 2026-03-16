@@ -11,7 +11,6 @@ if (NOT CMAKE_BUILD_TYPE)
 endif()
 
 option(BUILD_CLIENT "Build the client" ON)
-option(BUILD_WITH_NIX "Build with Nix" OFF)
 
 find_package(PkgConfig REQUIRED)
 if(BUILD_CLIENT)
@@ -19,17 +18,6 @@ if(BUILD_CLIENT)
     pkg_check_modules(GLES1 REQUIRED IMPORTED_TARGET glesv2)
     pkg_check_modules(OpenAL REQUIRED IMPORTED_TARGET openal)
     pkg_check_modules(libpng REQUIRED IMPORTED_TARGET libpng)
-
-    if(APPLE)
-        execute_process(COMMAND brew --prefix angle
-                        OUTPUT_VARIABLE ANGLE_PREFIX
-                        OUTPUT_STRIP_TRAILING_WHITESPACE
-                        ERROR_QUIET)
-        message(STATUS "ANGLE_PREFIX: ${ANGLE_PREFIX}")
-        if(ANGLE_PREFIX)
-            set(GLES1_INCLUDE_DIRS ${ANGLE_PREFIX}/include)
-        endif()
-    endif()
 endif()
 
 set(SOURCES
@@ -295,6 +283,7 @@ target_compile_features(
 add_executable(mcpe_sdl3
     ${SOURCES}
     handheld/src/main.cpp
+    handheld/src/main_sdl3.cpp
     "handheld/src/client/gui/Font.cpp"
     "handheld/src/client/gui/Gui.cpp"
     "handheld/src/client/gui/GuiComponent.cpp"
@@ -409,19 +398,6 @@ target_link_libraries(
     PkgConfig::OpenAL
     PkgConfig::libpng
 )
-if(BUILD_WITH_NIX)
-    target_link_libraries(
-        mcpe_sdl3
-        PUBLIC
-        PkgConfig::ANGLE
-    )
-else()
-    target_link_libraries(
-        mcpe_sdl3
-        PUBLIC
-        GLESv1_CM
-    )
-endif()
 target_compile_definitions(
     mcpe_sdl3
     PUBLIC
@@ -432,20 +408,8 @@ target_link_directories(
     PUBLIC
     ${OpenAL_LIBRARY_DIRS}
     ${libpng_LIBRARY_DIRS}
+    ${GLES1_LIBRARY_DIRS}
 )
-if(BUILD_WITH_NIX)
-    target_link_directories(
-        mcpe_sdl3
-        PUBLIC
-        ${ANGLE_LIBRARY_DIRS}
-    )
-else()
-    target_link_directories(
-        mcpe_sdl3
-        PUBLIC
-        ${GLES1_LIBRARY_DIRS}
-    )
-endif()
 target_compile_definitions(
     mcpe_sdl3
     PUBLIC
@@ -470,9 +434,7 @@ target_compile_features(
     cxx_std_23
 )
 
-if (WIN32)
-    # list(APPEND SOURCES "handheld/src/AppPlatform_win32.cpp")
-elseif (APPLE)
+if (APPLE)
     find_library(FOUNDATION_LIBRARY Foundation)
     target_link_libraries(
         mcpe_sdl3

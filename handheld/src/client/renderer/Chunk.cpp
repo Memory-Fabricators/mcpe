@@ -15,7 +15,7 @@
 // int _layerChunkCount[3] = {0, 0, 0};
 
 Chunk::Chunk(Level *level_, int x, int y, int z, int size, int lists_,
-             GLuint *ptrBuf /*= NULL*/)
+    GLuint *ptrBuf /*= NULL*/)
     : level(level_), visible(false), compiled(false), _empty(true), xs(size),
       ys(size), zs(size), dirty(false), occlusion_visible(true),
       occlusion_querying(false), lists(lists_), vboBuffers(ptrBuf),
