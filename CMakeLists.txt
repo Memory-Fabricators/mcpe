@@ -6,6 +6,12 @@ include(GNUInstallDirs)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+    set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+    set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+endif()
+
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
@@ -296,6 +302,28 @@ target_compile_features(
     cxx_std_23
 )
 
+set(COMMON_PCH_HEADERS
+    <string>
+    <vector>
+    <memory>
+    <thread>
+    <atomic>
+    <map>
+    <set>
+    <unordered_map>
+    <algorithm>
+    <functional>
+    <cstdint>
+    <cstring>
+    <cstdio>
+    <cmath>
+    "handheld/src/App.h"
+    "handheld/src/platform/log.h"
+    "handheld/src/util/Mth.h"
+)
+
+target_precompile_headers(mcpe_dedicated PRIVATE ${COMMON_PCH_HEADERS})
+
 add_executable(mcpe_sdl3
     ${SOURCES}
     handheld/src/main.cpp
@@ -472,6 +500,17 @@ target_compile_features(
     mcpe_sdl3
     PRIVATE
     cxx_std_23
+)
+
+target_precompile_headers(mcpe_sdl3
+    PRIVATE
+    ${COMMON_PCH_HEADERS}
+    <SDL3/SDL.h>
+    <SDL3/SDL_opengles.h>
+)
+
+set_target_properties(mcpe_dedicated mcpe_sdl3 PROPERTIES
+    UNITY_BUILD ON
 )
 
 if (WIN32)
