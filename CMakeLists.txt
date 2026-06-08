@@ -509,10 +509,6 @@ target_precompile_headers(mcpe_sdl3
     <SDL3/SDL_opengles.h>
 )
 
-set_target_properties(mcpe_dedicated mcpe_sdl3 PROPERTIES
-    UNITY_BUILD ON
-)
-
 if (WIN32)
     # list(APPEND SOURCES "handheld/src/AppPlatform_win32.cpp")
 elseif (APPLE)
