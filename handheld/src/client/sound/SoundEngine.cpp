@@ -165,24 +165,6 @@ float SoundEngine::_getVolumeMult(float x, float y, float z) {
   return out;
 }
 
-#if defined(PRE_ANDROID23)
-void SoundEngine::play(const std::string &name, float x, float y, float z,
-                       float volume, float pitch) {
-  // volume *= (2.0f * _getVolumeMult(x, y, z))
-  if ((volume *= options->sound) <= 0)
-    return;
-
-  volume *= _getVolumeMult(x, y, z);
-  mc->platform()->playSound(name, volume, pitch);
-}
-void SoundEngine::playUI(const std::string &name, float volume, float pitch) {
-  if ((volume *= options->sound) <= 0)
-    return;
-
-  // volume *= 2.0f;
-  mc->platform()->playSound(name, volume, pitch);
-}
-#elif defined(__APPLE__)
 void SoundEngine::play(const std::string &name, float x, float y, float z,
                        float volume, float pitch) {
   if ((volume *= options->sound) <= 0)
@@ -195,6 +177,7 @@ void SoundEngine::play(const std::string &name, float x, float y, float z,
     soundSystem.playAt(sound, x - _x, y - _y, z - _z, volume, pitch);
   }
 }
+
 void SoundEngine::playUI(const std::string &name, float volume, float pitch) {
   if ((volume *= options->sound) <= 0)
     return;
@@ -208,39 +191,3 @@ void SoundEngine::playUI(const std::string &name, float volume, float pitch) {
     soundSystem.playAt(sound, 0, 0, 0, volume, pitch);
   }
 }
-#elif defined(SDL3)
-void SoundEngine::play(const std::string &name, float x, float y, float z,
-                       float volume, float pitch) {}
-void SoundEngine::playUI(const std::string &name, float volume, float pitch) {}
-#else
-void SoundEngine::play(const std::string &name, float x, float y, float z,
-                       float volume, float pitch) {
-  if ((volume *= options->sound) <= 0)
-    return;
-
-  volume = Mth::clamp(volume * _getVolumeMult(x, y, z), 0.0f, 1.0f);
-  if (/*!loaded || */ options->sound == 0 || volume <= 0)
-    return;
-
-  SoundDesc sound;
-  if (sounds.get(name, sound)) {
-    float dist = SOUND_DISTANCE;
-    if (volume > 1)
-      dist *= volume;
-    soundSystem.playAt(sound, x, y, z, volume, pitch);
-  }
-}
-void SoundEngine::playUI(const std::string &name, float volume, float pitch) {
-  if ((volume *= options->sound) <= 0)
-    return;
-
-  volume = Mth::clamp(volume, 0.0f, 1.0f);
-  if (/*!loaded || */ options->sound == 0 || volume <= 0)
-    return;
-
-  SoundDesc sound;
-  if (sounds.get(name, sound)) {
-    soundSystem.playAt(sound, 0, 0, 0, volume, pitch);
-  }
-}
-#endif
