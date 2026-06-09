@@ -1,0 +1,8 @@
+[wrap-git]
+url = https://github.com/ash-rs/ash
+revision = a9a1fb17e98a0cde146caada86200d809306200d
+depth = 1
+patch_directory = ash
+
+[provide]
+dependency_names = ash-0-rs

@@ -7,3 +7,6 @@
 /result
 /result-*
 .DS_Store
+/subprojects/*
+!/subprojects/*.wrap
+!/subprojects/packagefiles/

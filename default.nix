@@ -5,12 +5,14 @@
   meson,
   rustc,
   rust-cbindgen,
+  rust-bindgen,
+  shaderc,
   ninja,
   nixfmt,
   nixd,
   llvmPackages,
-  libGL,
-  angle,
+  vulkan-loader,
+  vulkan-headers,
   libpng,
   openal,
   sdl3,
@@ -31,10 +33,12 @@ stdenv.mkDerivation {
     llvmPackages.clang-tools
     rustc
     rust-cbindgen
+    rust-bindgen
+    shaderc
   ];
   buildInputs = [
-    libGL
-    angle
+    vulkan-loader
+    vulkan-headers
     libpng
     openal
     sdl3

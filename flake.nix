@@ -38,12 +38,14 @@
                   nixd
                   rustc
                   rust-cbindgen
+                  rust-bindgen
+                  shaderc
                   llvmPackages.clang-tools
                 ];
 
                 buildInputs = [
-                  libGL
-                  angle
+                  vulkan-loader
+                  vulkan-headers
                   libpng
                   openal
                   sdl3

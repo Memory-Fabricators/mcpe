@@ -1,5 +1,46 @@
 # handheld/src/client/meson.build — client sources (common + sdl3-only)
 
+use_vulkan = get_option('use_vulkan')
+
+# ---- Renderer sources — conditionally GL or Vulkan ----
+
+renderer_common_sources = files(
+    'renderer/Chunk.cpp',
+    'renderer/EntityTileRenderer.cpp',
+    'renderer/GameRenderer.cpp',
+    'renderer/ItemInHandRenderer.cpp',
+    'renderer/LevelRenderer.cpp',
+    'renderer/RenderChunk.cpp',
+    'renderer/RenderList.cpp',
+    'renderer/Tesselator.cpp',
+    'renderer/Textures.cpp',
+    'renderer/TileRenderer.cpp',
+    'renderer/culling/Frustum.cpp',
+    'renderer/entity/ArrowRenderer.cpp',
+    'renderer/entity/ChickenRenderer.cpp',
+    'renderer/entity/EntityRenderDispatcher.cpp',
+    'renderer/entity/EntityRenderer.cpp',
+    'renderer/entity/FallingTileRenderer.cpp',
+    'renderer/entity/HumanoidMobRenderer.cpp',
+    'renderer/entity/ItemRenderer.cpp',
+    'renderer/entity/ItemSpriteRenderer.cpp',
+    'renderer/entity/MobRenderer.cpp',
+    'renderer/entity/PaintingRenderer.cpp',
+    'renderer/entity/PlayerRenderer.cpp',
+    'renderer/entity/SheepRenderer.cpp',
+    'renderer/entity/TntRenderer.cpp',
+    'renderer/entity/TripodCameraRenderer.cpp',
+    'renderer/ptexture/DynamicTexture.cpp',
+    'renderer/tileentity/ChestRenderer.cpp',
+    'renderer/tileentity/SignRenderer.cpp',
+    'renderer/tileentity/TileEntityRenderDispatcher.cpp',
+    'renderer/tileentity/TileEntityRenderer.cpp',
+)
+
+gl_only_sources = files(
+    'renderer/gles.cpp',
+)
+
 # ---- Common client sources (shared by dedicated server AND sdl3 client) ----
 
 client_common_sources += files(
@@ -85,37 +126,11 @@ client_only_sources += files(
     'particle/ParticleEngine.cpp',
     'player/input/KeyboardInput.cpp',
     'player/input/touchscreen/TouchscreenInput.cpp',
-    'renderer/Chunk.cpp',
-    'renderer/EntityTileRenderer.cpp',
-    'renderer/GameRenderer.cpp',
-    'renderer/ItemInHandRenderer.cpp',
-    'renderer/LevelRenderer.cpp',
-    'renderer/RenderChunk.cpp',
-    'renderer/RenderList.cpp',
-    'renderer/Tesselator.cpp',
-    'renderer/Textures.cpp',
-    'renderer/TileRenderer.cpp',
-    'renderer/gles.cpp',
-    'renderer/culling/Frustum.cpp',
-    'renderer/entity/ArrowRenderer.cpp',
-    'renderer/entity/ChickenRenderer.cpp',
-    'renderer/entity/EntityRenderDispatcher.cpp',
-    'renderer/entity/EntityRenderer.cpp',
-    'renderer/entity/FallingTileRenderer.cpp',
-    'renderer/entity/HumanoidMobRenderer.cpp',
-    'renderer/entity/ItemRenderer.cpp',
-    'renderer/entity/ItemSpriteRenderer.cpp',
-    'renderer/entity/MobRenderer.cpp',
-    'renderer/entity/PaintingRenderer.cpp',
-    'renderer/entity/PlayerRenderer.cpp',
-    'renderer/entity/SheepRenderer.cpp',
-    'renderer/entity/TntRenderer.cpp',
-    'renderer/entity/TripodCameraRenderer.cpp',
-    'renderer/ptexture/DynamicTexture.cpp',
-    'renderer/tileentity/ChestRenderer.cpp',
-    'renderer/tileentity/SignRenderer.cpp',
-    'renderer/tileentity/TileEntityRenderDispatcher.cpp',
-    'renderer/tileentity/TileEntityRenderer.cpp',
     'sound/Sound.cpp',
     'sound/SoundEngine.cpp',
 )
+
+client_only_sources += renderer_common_sources
+if not use_vulkan
+    client_only_sources += gl_only_sources
+endif

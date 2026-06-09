@@ -9,7 +9,6 @@
 #include "platform/log.h"
 #ifndef STANDALONE_SERVER
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_opengles.h>
 #endif
 
 typedef struct AppContext {

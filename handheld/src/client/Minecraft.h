@@ -14,6 +14,7 @@
 #endif
 // #include "../network/RakNetInstance.h"
 #include "../world/phys/HitResult.h"
+#include "App.h"
 #include <atomic>
 #include <memory>
 #include <thread>

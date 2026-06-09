@@ -1,5 +1,4 @@
 #pragma once
-#include "MinecraftApp.h"
 #include "client/renderer/gles.h"
 #include <cassert>
 

@@ -4,3 +4,10 @@ option(
     value: true,
     description: 'Build the client (mcpe_sdl3)',
 )
+
+option(
+    'use_vulkan',
+    type: 'boolean',
+    value: false,
+    description: 'Use Vulkan renderer instead of OpenGL ES',
+)
