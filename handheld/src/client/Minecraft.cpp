@@ -719,8 +719,6 @@ void Minecraft::tickInput() {
       if (!screen && key == Keyboard::KEY_O || key == 250) {
         releaseMouse();
       }
-#endif
-#if defined(WIN32)
       if (key == Keyboard::KEY_F) {
         options.isFlying = !options.isFlying;
         player->noPhysics = options.isFlying;
@@ -834,12 +832,7 @@ void Minecraft::tickInput() {
           _perfRenderer->debugFpsMeterKeyPress(key - '0');
         }
       }
-#endif
 
-#ifndef SDL3
-      if (key == 82)
-        pauseGame(false);
-#else
       if (key == Keyboard::KEY_ESCAPE)
         pauseGame(false);
 #endif
