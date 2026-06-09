@@ -1,0 +1,6 @@
+option(
+    'build_client',
+    type: 'boolean',
+    value: true,
+    description: 'Build the client (mcpe_sdl3)',
+)

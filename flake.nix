@@ -32,10 +32,12 @@
               rec {
                 nativeBuildInputs = [
                   pkg-config
-                  cmakeMinimal
+                  meson
                   ninja
                   nixfmt
                   nixd
+                  rustc
+                  rust-cbindgen
                   llvmPackages.clang-tools
                 ];
 

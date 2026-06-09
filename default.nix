@@ -2,7 +2,9 @@
   lib,
   stdenv,
   pkg-config,
-  cmakeMinimal,
+  meson,
+  rustc,
+  rust-cbindgen,
   ninja,
   nixfmt,
   nixd,
@@ -22,11 +24,13 @@ stdenv.mkDerivation {
 
   nativeBuildInputs = [
     pkg-config
-    cmakeMinimal
+    meson
     ninja
     nixfmt
     nixd
     llvmPackages.clang-tools
+    rustc
+    rust-cbindgen
   ];
   buildInputs = [
     libGL
@@ -39,9 +43,7 @@ stdenv.mkDerivation {
     wayland
   ];
 
-  cmakeFlags = [
-    "-GNinja"
-    "-DBUILD_WITH_NIX=ON"
+  mesonFlags  = [
   ];
 
   postInstall = ''
