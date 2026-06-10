@@ -3,14 +3,10 @@
 #include "RakPeerInterface.h"
 #include "BitStream.h"
 #include "RakNetTypes.h"
-#include "RakSleep.h"
 #include "Export.h"
 #include "PacketPriority.h"
 #include "RakNetSmartPtr.h"
 #include "RakNetSocket.h"
-#include "HTTPConnection.h"
-#include "TCPInterface.h"
-#include "DS_Table.h"
 #include <stdarg.h>
 #include <string>
 #include <vector>

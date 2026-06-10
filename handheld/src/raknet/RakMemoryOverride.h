@@ -13,8 +13,6 @@
 #include "RakNetDefines.h"
 #include <new>
 
-#include "RakAlloca.h"
-
 // #if _USE_RAK_MEMORY_OVERRIDE==1
 // 	#if defined(new)
 // 		#pragma push_macro("new")
