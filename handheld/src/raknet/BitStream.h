@@ -37,6 +37,19 @@
 #endif
 
 namespace RakNet {
+
+extern "C" {
+  void rust_bitstream_construct(void *bs);
+  void rust_bitstream_construct_data(void *bs, unsigned char *data, unsigned int length, bool copyData);
+  void rust_bitstream_destruct(void *bs);
+  void rust_bitstream_reset(void *bs);
+  void rust_bitstream_write_bits(void *bs, const unsigned char *inByteArray, unsigned int numberOfBitsToWrite, bool rightAlignedBits);
+  bool rust_bitstream_read_bits(void *bs, unsigned char *inByteArray, unsigned int numberOfBitsToRead, bool alignBitsToRight);
+  void rust_bitstream_write_aligned_bytes(void *bs, const unsigned char *inByteArray, unsigned int numberOfBytesToWrite);
+  bool rust_bitstream_read_aligned_bytes(void *bs, unsigned char *inByteArray, unsigned int numberOfBytesToRead);
+  void rust_bitstream_write_bitstream(void *bs, void *src_bs, unsigned int numberOfBits);
+}
+
 /// This class allows you to write and read native types as a string of bits.
 /// BitStream is used extensively throughout RakNet and is designed to be used
 /// by users as well.
@@ -48,7 +61,9 @@ public:
   STATIC_FACTORY_DECLARATIONS(BitStream)
 
   /// Default Constructor
-  BitStream();
+  inline BitStream() {
+      rust_bitstream_construct(this);
+  }
 
   /// \brief Create the bitstream, with some number of bytes to immediately
   /// allocate.
@@ -57,7 +72,15 @@ public:
   /// BITSTREAM_STACK_ALLOCATION_SIZE. In that case all it does is save you one
   /// or more realloc calls.
   /// \param[in] initialBytesToAllocate the number of bytes to pre-allocate.
-  BitStream(const unsigned int initialBytesToAllocate);
+  inline BitStream(const unsigned int initialBytesToAllocate) {
+      rust_bitstream_construct(this);
+      if (initialBytesToAllocate > 256) {
+          unsigned char *new_ptr = (unsigned char *)malloc(initialBytesToAllocate);
+          memset(new_ptr, 0, initialBytesToAllocate);
+          data = new_ptr;
+          numberOfBitsAllocated = initialBytesToAllocate * 8;
+      }
+  }
 
   /// \brief Initialize the BitStream, immediately setting the data it contains
   /// to a predefined pointer.
@@ -73,14 +96,20 @@ public:
   /// \param[in] _data An array of bytes.
   /// \param[in] lengthInBytes Size of the \a _data.
   /// \param[in] _copyData true or false to make a copy of \a _data or not.
-  BitStream(unsigned char *_data, const unsigned int lengthInBytes,
-            bool _copyData);
+  inline BitStream(unsigned char *_data, const unsigned int lengthInBytes,
+            bool _copyData) {
+      rust_bitstream_construct_data(this, _data, lengthInBytes, _copyData);
+  }
 
   // Destructor
-  ~BitStream();
+  inline ~BitStream() {
+      rust_bitstream_destruct(this);
+  }
 
   /// Resets the bitstream for reuse.
-  void Reset(void);
+  inline void Reset(void) {
+      rust_bitstream_reset(this);
+  }
 
   /// \brief Bidirectional serialize/deserialize any integral type to/from a
   /// bitstream.
@@ -423,24 +452,46 @@ public:
   /// \param[in] numberOfBits bits to read
   /// \param bitStream the bitstream to read into from
   /// \return true on success, false on failure.
-  bool Read(BitStream *bitStream, BitSize_t numberOfBits);
-  bool Read(BitStream *bitStream);
-  bool Read(BitStream &bitStream, BitSize_t numberOfBits);
-  bool Read(BitStream &bitStream);
+  inline bool Read(BitStream *bitStream, BitSize_t numberOfBits) {
+      if (GetNumberOfUnreadBits() < numberOfBits)
+          return false;
+      bitStream->Write(this, numberOfBits);
+      return true;
+  }
+  inline bool Read(BitStream *bitStream) {
+      bitStream->Write(this, GetNumberOfUnreadBits());
+      return true;
+  }
+  inline bool Read(BitStream &bitStream, BitSize_t numberOfBits) {
+      return Read(&bitStream, numberOfBits);
+  }
+  inline bool Read(BitStream &bitStream) {
+      return Read(&bitStream);
+  }
 
   /// \brief Write an array or casted stream or raw data.  This does NOT do
   /// endian swapping.
   /// \param[in] inputByteArray a byte buffer
   /// \param[in] numberOfBytes the size of \a input in bytes
-  void Write(const char *inputByteArray, const unsigned int numberOfBytes);
+  inline void Write(const char *inputByteArray, const unsigned int numberOfBytes) {
+      rust_bitstream_write_bits(this, (const unsigned char *)inputByteArray, numberOfBytes * 8, true);
+  }
 
   /// \brief Write one bitstream to another.
   /// \param[in] numberOfBits bits to write
   /// \param bitStream the bitstream to copy from
-  void Write(BitStream *bitStream, BitSize_t numberOfBits);
-  void Write(BitStream *bitStream);
-  void Write(BitStream &bitStream, BitSize_t numberOfBits);
-  void Write(BitStream &bitStream);
+  inline void Write(BitStream *bitStream, BitSize_t numberOfBits) {
+      rust_bitstream_write_bitstream(this, bitStream, numberOfBits);
+  }
+  inline void Write(BitStream *bitStream) {
+      rust_bitstream_write_bitstream(this, bitStream, bitStream->GetNumberOfBitsUsed());
+  }
+  inline void Write(BitStream &bitStream, BitSize_t numberOfBits) {
+      Write(&bitStream, numberOfBits);
+  }
+  inline void Write(BitStream &bitStream) {
+      Write(&bitStream);
+  }
 
   /// \brief Write a float into 2 bytes, spanning the range between \a floatMin
   /// and \a floatMax
@@ -542,7 +593,17 @@ public:
   /// numberOfBytes.
   /// \param[in] numberOfBytes The number of byte to read
   /// \return true on success false if there is some missing bytes.
-  bool Read(char *output, const unsigned int numberOfBytes);
+  inline bool Read(char *output, const unsigned int numberOfBytes) {
+      if ((readOffset & 7) == 0) {
+          if (readOffset + (numberOfBytes << 3) > numberOfBitsUsed)
+              return false;
+          memcpy(output, data + (readOffset >> 3), (size_t)numberOfBytes);
+          readOffset += numberOfBytes << 3;
+          return true;
+      } else {
+          return ReadBits((unsigned char *)output, numberOfBytes * 8);
+      }
+  }
 
   /// \brief Read a float into 2 bytes, spanning the range between \a floatMin
   /// and \a floatMax
@@ -642,10 +703,8 @@ public:
                                     templateType &m22);
 
   /// \brief Sets the read pointer back to the beginning of your data.
-  void ResetReadPointer(void);
-
-  /// \brief Sets the write pointer back to the beginning of your data.
-  void ResetWritePointer(void);
+  inline void ResetReadPointer(void) { readOffset = 0; }
+  inline void ResetWritePointer(void) { numberOfBitsUsed = 0; }
 
   /// \brief This is good to call when you are done with the stream to make
   /// sure you didn't leave any data left over void
@@ -711,18 +770,11 @@ public:
   /// \return A pointer to the internal state
   inline unsigned char *GetData(void) const { return data; }
 
-  /// \brief Write numberToWrite bits from the input source.
-  /// \details Right aligned data means in the case of a partial byte, the bits
-  /// are aligned from the right (bit 0) rather than the left (as in the normal
-  /// internal representation) You would set this to true when
-  /// writing user data, and false when copying bitstream data, such
-  /// as writing one bitstream to another.
-  /// \param[in] inByteArray The data
-  /// \param[in] numberOfBitsToWrite The number of bits to write
-  /// \param[in] rightAlignedBits if true data will be right aligned
-  void WriteBits(const unsigned char *inByteArray,
+  inline void WriteBits(const unsigned char *inByteArray,
                  BitSize_t numberOfBitsToWrite,
-                 const bool rightAlignedBits = true);
+                 const bool rightAlignedBits = true) {
+      rust_bitstream_write_bits(this, inByteArray, numberOfBitsToWrite, rightAlignedBits);
+  }
 
   /// \brief Align the bitstream to the byte boundary and then write the
   /// specified number of bits.
@@ -731,8 +783,10 @@ public:
   /// ReadAlignedBits at the corresponding read position.
   /// \param[in] inByteArray The data
   /// \param[in] numberOfBytesToWrite The size of input.
-  void WriteAlignedBytes(const unsigned char *inByteArray,
-                         const unsigned int numberOfBytesToWrite);
+  inline void WriteAlignedBytes(const unsigned char *inByteArray,
+                         const unsigned int numberOfBytesToWrite) {
+      rust_bitstream_write_aligned_bytes(this, inByteArray, numberOfBytesToWrite);
+  }
 
   // Endian swap bytes already in the bitstream
   void EndianSwapBytes(int byteOffset, int length);
@@ -746,17 +800,10 @@ public:
                              const unsigned int inputLength,
                              const unsigned int maxBytesToWrite);
 
-  /// \brief Read bits, starting at the next aligned bits.
-  /// \details Note that the modulus 8 starting offset of the sequence must be
-  /// the same as was used with WriteBits. This will be a problem with packet
-  /// coalescence unless you byte align the coalesced packets.
-  /// \param[in] inOutByteArray The byte array larger than @em
-  /// numberOfBytesToRead
-  /// \param[in] numberOfBytesToRead The number of byte to read from the
-  /// internal state
-  /// \return true if there is enough byte.
-  bool ReadAlignedBytes(unsigned char *inOutByteArray,
-                        const unsigned int numberOfBytesToRead);
+  inline bool ReadAlignedBytes(unsigned char *inOutByteArray,
+                        const unsigned int numberOfBytesToRead) {
+      return rust_bitstream_read_aligned_bytes(this, inOutByteArray, numberOfBytesToRead);
+  }
 
   /// \brief Reads what was written by WriteAlignedBytesSafe.
   /// \param[in] inOutByteArray The data
@@ -795,73 +842,76 @@ public:
     readOffset += 8 - (((readOffset - 1) & 7) + 1);
   }
 
-  /// \brief Read \a numberOfBitsToRead bits to the output source.
-  /// \details alignBitsToRight should be set to true to convert internal
-  /// bitstream data to userdata. It should be false if you used
-  /// WriteBits with rightAlignedBits false
-  /// \param[in] inOutByteArray The resulting bits array
-  /// \param[in] numberOfBitsToRead The number of bits to read
-  /// \param[in] alignBitsToRight if true bits will be right aligned.
-  /// \return true if there is enough bits to read
-  bool ReadBits(unsigned char *inOutByteArray, BitSize_t numberOfBitsToRead,
-                const bool alignBitsToRight = true);
+  inline bool ReadBits(unsigned char *inOutByteArray, BitSize_t numberOfBitsToRead,
+                const bool alignBitsToRight = true) {
+      return rust_bitstream_read_bits(this, inOutByteArray, numberOfBitsToRead, alignBitsToRight);
+  }
 
-  /// \brief Write a 0
-  void Write0(void);
+  inline void Write0(void) {
+      bool b = false;
+      WriteBits((unsigned char*)&b, 1, true);
+  }
 
-  /// \brief Write a 1
-  void Write1(void);
+  inline void Write1(void) {
+      bool b = true;
+      WriteBits((unsigned char*)&b, 1, true);
+  }
 
-  /// \brief Reads 1 bit and returns true if that bit is 1 and false if it is 0.
-  bool ReadBit(void);
+  inline bool ReadBit(void) {
+      bool b = false;
+      if (ReadBits((unsigned char*)&b, 1, true)) return b;
+      return false;
+  }
 
-  /// \brief If we used the constructor version with copy data off, this
-  /// *makes sure it is set to on and the data pointed to is copied.
-  void AssertCopyData(void);
+  inline void AssertCopyData(void) {}
 
-  /// \brief Use this if you pass a pointer copy to the constructor
-  /// *(_copyData==false) and want to overallocate to prevent
-  /// reallocation.
-  void SetNumberOfBitsAllocated(const BitSize_t lengthInBits);
+  inline void SetNumberOfBitsAllocated(const BitSize_t lengthInBits) {
+      numberOfBitsAllocated = lengthInBits;
+  }
 
-  /// \brief Reallocates (if necessary) in preparation of writing
-  /// numberOfBitsToWrite
-  void AddBitsAndReallocate(const BitSize_t numberOfBitsToWrite);
+  inline void AddBitsAndReallocate(const BitSize_t numberOfBitsToWrite) {}
 
-  /// \internal
-  /// \return How many bits have been allocated internally
-  BitSize_t GetNumberOfBitsAllocated(void) const;
+  inline BitSize_t GetNumberOfBitsAllocated(void) const {
+      return numberOfBitsAllocated;
+  }
 
-  /// \brief Read strings, non reference.
-  bool Read(char *varString);
-  bool Read(unsigned char *varString);
+  inline bool Read(char *varString) {
+      return RakString::Deserialize(varString, this);
+  }
+  inline bool Read(unsigned char *varString) {
+      return RakString::Deserialize((char *)varString, this);
+  }
 
-  /// Write zeros until the bitstream is filled up to \a bytes
-  void PadWithZeroToByteLength(unsigned int bytes);
+  inline void PadWithZeroToByteLength(unsigned int bytes) {
+      if (GetNumberOfBytesUsed() < bytes) {
+          unsigned int diff = bytes - GetNumberOfBytesUsed();
+          unsigned char *zeroes = (unsigned char *)alloca(diff);
+          memset(zeroes, 0, diff);
+          WriteAlignedBytes(zeroes, diff);
+      }
+  }
 
-  /// Get the number of leading zeros for a number
-  /// \param[in] x Number to test
-  static int NumberOfLeadingZeroes(uint8_t x);
-  static int NumberOfLeadingZeroes(uint16_t x);
-  static int NumberOfLeadingZeroes(uint32_t x);
-  static int NumberOfLeadingZeroes(uint64_t x);
-  static int NumberOfLeadingZeroes(int8_t x);
-  static int NumberOfLeadingZeroes(int16_t x);
-  static int NumberOfLeadingZeroes(int32_t x);
-  static int NumberOfLeadingZeroes(int64_t x);
+  static inline int NumberOfLeadingZeroes(uint8_t x) { return NumberOfLeadingZeroes((uint32_t)x) - 24; }
+  static inline int NumberOfLeadingZeroes(uint16_t x) { return NumberOfLeadingZeroes((uint32_t)x) - 16; }
+  static inline int NumberOfLeadingZeroes(uint32_t x) {
+      if (x == 0) return 32;
+      return __builtin_clz(x);
+  }
+  static inline int NumberOfLeadingZeroes(uint64_t x) {
+      if (x == 0) return 64;
+      return __builtin_clzll(x);
+  }
+  static inline int NumberOfLeadingZeroes(int8_t x) { return NumberOfLeadingZeroes((uint8_t)x); }
+  static inline int NumberOfLeadingZeroes(int16_t x) { return NumberOfLeadingZeroes((uint16_t)x); }
+  static inline int NumberOfLeadingZeroes(int32_t x) { return NumberOfLeadingZeroes((uint32_t)x); }
+  static inline int NumberOfLeadingZeroes(int64_t x) { return NumberOfLeadingZeroes((uint64_t)x); }
 
-  /// \internal Unrolled inner loop, for when performance is critical
-  void WriteAlignedVar8(const char *inByteArray);
-  /// \internal Unrolled inner loop, for when performance is critical
-  bool ReadAlignedVar8(char *inOutByteArray);
-  /// \internal Unrolled inner loop, for when performance is critical
-  void WriteAlignedVar16(const char *inByteArray);
-  /// \internal Unrolled inner loop, for when performance is critical
-  bool ReadAlignedVar16(char *inOutByteArray);
-  /// \internal Unrolled inner loop, for when performance is critical
-  void WriteAlignedVar32(const char *inByteArray);
-  /// \internal Unrolled inner loop, for when performance is critical
-  bool ReadAlignedVar32(char *inOutByteArray);
+  inline void WriteAlignedVar8(const char *inByteArray) { WriteAlignedBytes((const unsigned char *)inByteArray, 1); }
+  inline bool ReadAlignedVar8(char *inOutByteArray) { return ReadAlignedBytes((unsigned char *)inOutByteArray, 1); }
+  inline void WriteAlignedVar16(const char *inByteArray) { WriteAlignedBytes((const unsigned char *)inByteArray, 2); }
+  inline bool ReadAlignedVar16(char *inOutByteArray) { return ReadAlignedBytes((unsigned char *)inOutByteArray, 2); }
+  inline void WriteAlignedVar32(const char *inByteArray) { WriteAlignedBytes((const unsigned char *)inByteArray, 4); }
+  inline bool ReadAlignedVar32(char *inOutByteArray) { return ReadAlignedBytes((unsigned char *)inOutByteArray, 4); }
 
   inline void Write(const char *const inStringVar) {
     RakString::Serialize(inStringVar, this);
@@ -1043,13 +1093,23 @@ public:
     static const bool r = IsNetworkOrderInternal();
     return r;
   }
-  // Not inline, won't compile on PC due to winsock include errors
-  static bool IsNetworkOrderInternal(void);
-  static void ReverseBytes(unsigned char *inByteArray,
+  static inline bool IsNetworkOrderInternal(void) {
+      return !((*(unsigned short *)"H\0" & 0xFF) == 'H');
+  }
+  static inline void ReverseBytes(unsigned char *inByteArray,
                            unsigned char *inOutByteArray,
-                           const unsigned int length);
-  static void ReverseBytesInPlace(unsigned char *inOutData,
-                                  const unsigned int length);
+                           const unsigned int length) {
+      for (unsigned int i = 0; i < length; i++)
+          inOutByteArray[i] = inByteArray[length - i - 1];
+  }
+  static inline void ReverseBytesInPlace(unsigned char *inOutData,
+                                  const unsigned int length) {
+      for (unsigned int i = 0; i < length / 2; i++) {
+          unsigned char temp = inOutData[i];
+          inOutData[i] = inOutData[length - i - 1];
+          inOutData[length - i - 1] = temp;
+      }
+  }
 
 private:
   BitStream(const BitStream &invalid) {

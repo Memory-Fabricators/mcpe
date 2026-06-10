@@ -4,3 +4,10 @@ option(
     value: true,
     description: 'Build the client (mcpe_sdl3)',
 )
+
+option(
+    'raknet_legacy_protocol',
+    type: 'boolean',
+    value: true,
+    description: 'Use RakNet protocol version 5 (2012 MCPE compatibility). Set false for modern Bedrock (v10/11).',
+)

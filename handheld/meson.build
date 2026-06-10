@@ -16,7 +16,10 @@ if build_client
 
     client_deps += [sdl3_dep, openal_dep, libpng_dep]
 
-    gles_dep = dependency('glesv1_cm')
+    gles_dep = dependency('glesv1_cm', required: false)
+    if not gles_dep.found()
+        gles_dep = dependency('angle')
+    endif
     client_deps += gles_dep
 
     if host_machine.system() == 'darwin'
@@ -45,7 +48,9 @@ mcpe_dedicated = executable(
     core_sources,
     include_directories: common_include,
     cpp_args: ['-DSTANDALONE_SERVER'],
-    dependencies: dedicated_deps,
+    cpp_pch: 'src/pch/game_pch.h',
+    override_options: ['unity=off'],
+    dependencies: dedicated_deps + [raknet_dep],
     install: true,
 )
 
@@ -59,7 +64,9 @@ if build_client
         client_extra_sources,
         include_directories: common_include,
         cpp_args: client_cpp_args,
-        dependencies: client_deps,
+        cpp_pch: 'src/pch/game_pch.h',
+        override_options: ['unity=off'],
+        dependencies: client_deps + [raknet_dep],
         install: true,
     )
 endif

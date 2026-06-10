@@ -2,7 +2,6 @@
 
 # ---- Collect sources from subdirs ----
 
-raknet_sources = []
 subdir('raknet')
 
 world_sources = []
@@ -33,9 +32,9 @@ nbt_sources = files(
 )
 
 network_common_sources = files(
-    'network/NATPunchHandler.cpp',
     'network/NetEventCallback.cpp',
-    'network/PHPDirectoryServer2.cpp',
+    # 'network/NATPunchHandler.cpp',
+    # 'network/PHPDirectoryServer2.cpp',
     'network/Packet.cpp',
     'network/RakNetInstance.cpp',
     'network/ServerSideNetworkHandler.cpp',
@@ -94,12 +93,23 @@ endif
 
 # Core sources shared by both dedicated server and client
 core_sources = (
-    src_root_sources + locale_sources + nbt_sources + network_common_sources + platform_common_sources + raknet_sources + server_sources + util_common_sources + world_sources + client_common_sources
+    src_root_sources
+    + locale_sources
+    + nbt_sources
+    + network_common_sources
+    + platform_common_sources
+    + server_sources
+    + util_common_sources
+    + world_sources
+    + client_common_sources
 )
 
 # Client-only source additions
 if build_client
     client_extra_sources = (
-        client_only_sources + network_client_sources + platform_client_sources + util_client_sources
+        client_only_sources
+        + network_client_sources
+        + platform_client_sources
+        + util_client_sources
     )
 endif

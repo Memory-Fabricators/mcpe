@@ -4,7 +4,7 @@
   };
 
   outputs =
-    { self, nixpkgs, ... }:
+    { nixpkgs, ... }:
     let
       eachSystem = nixpkgs.lib.genAttrs [
         "x86_64-linux"
@@ -16,7 +16,7 @@
     {
       packages = eachSystem (
         system: with nixpkgs.legacyPackages.${system}; {
-          default = callPackage ./default.nix {
+          default = callPackage ./nix/default.nix {
             stdenv = llvmPackages.stdenv;
           };
         }
@@ -37,13 +37,16 @@
                   nixfmt
                   nixd
                   rustc
+                  rust-analyzer
+                  rustfmt
+                  clippy
+                  cargo
                   rust-cbindgen
                   llvmPackages.clang-tools
                 ];
 
                 buildInputs = [
-                  libGL
-                  angle
+                  (callPackage ./nix/angle { })
                   libpng
                   openal
                   sdl3
