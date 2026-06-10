@@ -2,19 +2,15 @@
   lib,
   stdenv,
   pkg-config,
-  meson,
-  rustc,
-  rust-cbindgen,
+  zig,
   ninja,
   nixfmt,
   nixd,
   llvmPackages,
-  libGL,
-  angle,
   libpng,
   openal,
   sdl3,
-  wayland,
+  shaderc,
 }:
 
 stdenv.mkDerivation {
@@ -24,27 +20,16 @@ stdenv.mkDerivation {
 
   nativeBuildInputs = [
     pkg-config
-    meson
-    ninja
-    nixfmt
-    nixd
-    llvmPackages.clang-tools
-    rustc
-    rust-cbindgen
+    zig
   ];
   buildInputs = [
-    libGL
-    angle
     libpng
     openal
     sdl3
-  ]
-  ++ lib.optionals stdenv.hostPlatform.isLinux [
-    wayland
+    shaderc
   ];
 
-  mesonFlags  = [
-  ];
+  zigBuildFlags = [];
 
   postInstall = ''
     mkdir -p $out/share/

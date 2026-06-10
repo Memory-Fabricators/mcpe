@@ -1,10 +1,9 @@
 project(
     'mcpe',
-    ['c', 'cpp', 'objcpp', 'rust'],
+    ['c', 'cpp', 'objcpp'],
     version: '0.1.0',
     default_options: [
         'cpp_std=c++23',
-        'rust_std=2024',
         'buildtype=debugoptimized',
         'warning_level=3',
         'default_library=static',

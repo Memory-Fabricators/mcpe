@@ -36,20 +36,15 @@
                   ninja
                   nixfmt
                   nixd
-                  rustc
-                  rust-cbindgen
-                  llvmPackages.clang-tools
+                  zig
+                  zls
+                  shaderc
                 ];
 
                 buildInputs = [
-                  libGL
-                  angle
                   libpng
                   openal
                   sdl3
-                ]
-                ++ lib.optionals stdenv.hostPlatform.isLinux [
-                  wayland
                 ];
 
                 LD_LIBRARY_PATH = lib.makeLibraryPath buildInputs;
