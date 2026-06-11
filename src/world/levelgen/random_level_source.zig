@@ -169,9 +169,9 @@ pub const RandomLevelSource = struct {
             .forest_noise = fn_noise,
             .chunk_map = std.AutoHashMap(i64, LevelChunk).init(allocator),
             .buffer = buf,
-            .sand_buffer = [_]f32{0} ** (16 * 16),
-            .gravel_buffer = [_]f32{0} ** (16 * 16),
-            .depth_buffer = [_]f32{0} ** (16 * 16),
+            .sand_buffer = @splat(0),
+            .gravel_buffer = @splat(0),
+            .depth_buffer = @splat(0),
         };
     }
 
@@ -608,7 +608,7 @@ pub const LevelChunk = struct {
 
     pub fn init(allocator: std.mem.Allocator, blocks: []u8, x: i32, z: i32) !LevelChunk {
         _ = allocator;
-        var hmap = [_]i8{0} ** 256;
+        var hmap: [256]i8 = @splat(0);
         RandomLevelSource.recalcHeightmap(blocks, &hmap);
         return .{
             .blocks = blocks,

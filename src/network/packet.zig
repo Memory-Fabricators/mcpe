@@ -373,7 +373,7 @@ pub const NetEventCallback = struct {
     handleDefault: ?*const fn (ctx: *anyopaque, source: RakNetGUID, data: *PacketData) void = null,
 
     /// Per-packet handlers (populated dynamically or set explicitly)
-    handlers: [num_packets]?*const fn (ctx: *anyopaque, source: RakNetGUID, data: *PacketData) void = [_]?*const fn (*anyopaque, RakNetGUID, *PacketData) void{null} ** num_packets,
+    handlers: [num_packets]?*const fn (ctx: *anyopaque, source: RakNetGUID, data: *PacketData) void = @splat(null),
 
     /// Dispatch a packet to the appropriate handler
     pub fn dispatch(self: *NetEventCallback, ctx: *anyopaque, source: RakNetGUID, packet: *PacketData) void {

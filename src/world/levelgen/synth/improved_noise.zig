@@ -15,7 +15,7 @@ pub const ImprovedNoise = struct {
 
     pub fn init(random: *Random) ImprovedNoise {
         var self = ImprovedNoise{
-            .p = [_]i32{0} ** 512,
+            .p = @splat(0),
             .xo = random.nextFloat() * 256.0,
             .yo = random.nextFloat() * 256.0,
             .zo = random.nextFloat() * 256.0,

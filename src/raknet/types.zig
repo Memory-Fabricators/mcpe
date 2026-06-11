@@ -192,7 +192,7 @@ pub const SocketDescriptor = struct {
     /// The local port to bind to. 0 = OS autoassign.
     port: u16 = 0,
     /// The local network card address to bind to (e.g., "127.0.0.1"). Empty = INADDR_ANY.
-    host_address: [32]u8 = [_]u8{0} ** 32,
+    host_address: [32]u8 = @splat(0),
     /// IP version family
     socket_family: SocketFamily = .ipv4,
     /// Extra socket options

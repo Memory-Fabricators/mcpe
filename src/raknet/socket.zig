@@ -98,7 +98,7 @@ fn resolveBindAddress(io_ctx: io, desc: SocketDescriptor) !net.IpAddress {
             // Bind to all interfaces
             return switch (desc.socket_family) {
                 .ipv4 => net.IpAddress{ .ip4 = .{ .bytes = .{ 0, 0, 0, 0 }, .port = desc.port } },
-                .ipv6 => net.IpAddress{ .ip6 = .{ .bytes = .{0} ** 16, .port = desc.port } },
+                .ipv6 => net.IpAddress{ .ip6 = .{ .bytes = @splat(0), .port = desc.port } },
                 .unspecified => net.IpAddress{ .ip4 = .{ .bytes = .{ 0, 0, 0, 0 }, .port = desc.port } },
             };
         }

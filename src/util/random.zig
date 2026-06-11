@@ -19,7 +19,7 @@ pub const Random = struct {
 
     pub fn init(seed: i64) Random {
         var self = Random{
-            .mt = [_]u32{0} ** N,
+            .mt = @splat(0),
             .mti = N + 1,
             .have_next_next_gaussian = false,
             .next_next_gaussian = 0,

@@ -150,7 +150,7 @@ pub const RakPeer = struct {
             .offline_ping_data = null,
             .start_time = 0,
             .io_context = null,
-            .recv_buffer = [_]u8{0} ** recv_buffer_size,
+            .recv_buffer = @splat(0),
         };
     }
 

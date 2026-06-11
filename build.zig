@@ -4,6 +4,9 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const use_llvm = b.option(bool, "use-llvm", "Use LLVM for compilation") orelse true;
+    const use_lld = b.option(bool, "use-lld", "Use LLD for linking") orelse false;
+
     // ---- Core modules ----
     const zig_raknet = b.addModule("zig-raknet", .{
         .root_source_file = b.path("src/raknet/raknet.zig"),
@@ -46,6 +49,8 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{.{ .name = "zig-raknet", .module = zig_raknet }},
         }),
+        .use_llvm = use_llvm,
+        .use_lld = use_lld,
     });
     b.installArtifact(ping_server_exe);
 
@@ -53,7 +58,7 @@ pub fn build(b: *std.Build) void {
     const run_srv = b.addRunArtifact(ping_server_exe);
     run_server_step.dependOn(&run_srv.step);
     run_srv.step.dependOn(b.getInstallStep());
-    if (b.args) |args| run_srv.addArgs(args);
+    run_srv.addPassthruArgs();
 
     // ---- Tests ----
     const test_step = b.step("test", "Run all tests");
@@ -64,6 +69,8 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
         }),
+        .use_llvm = use_llvm,
+        .use_lld = use_lld,
     });
     const run_raknet_tests = b.addRunArtifact(raknet_tests);
     test_step.dependOn(&run_raknet_tests.step);
@@ -76,6 +83,8 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{.{ .name = "raknet", .module = zig_raknet }},
         }),
+        .use_llvm = use_llvm,
+        .use_lld = use_lld,
     });
     const run_net_tests = b.addRunArtifact(network_tests);
     test_step.dependOn(&run_net_tests.step);
@@ -83,6 +92,8 @@ pub fn build(b: *std.Build) void {
 
     const nbt_tests = b.addTest(.{
         .root_module = b.createModule(.{ .root_source_file = b.path("src/nbt/tag.zig"), .target = target, .optimize = optimize }),
+        .use_llvm = use_llvm,
+        .use_lld = use_lld,
     });
     const run_nbt_tests = b.addRunArtifact(nbt_tests);
     test_step.dependOn(&run_nbt_tests.step);
@@ -90,6 +101,8 @@ pub fn build(b: *std.Build) void {
 
     const locale_tests = b.addTest(.{
         .root_module = b.createModule(.{ .root_source_file = b.path("src/locale/i18n.zig"), .target = target, .optimize = optimize }),
+        .use_llvm = use_llvm,
+        .use_lld = use_lld,
     });
     const run_locale_tests = b.addRunArtifact(locale_tests);
     test_step.dependOn(&run_locale_tests.step);
@@ -102,6 +115,8 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{.{ .name = "random", .module = random_mod }},
         }),
+        .use_llvm = use_llvm,
+        .use_lld = use_lld,
     });
     const run_levelgen_tests = b.addRunArtifact(levelgen_tests);
     test_step.dependOn(&run_levelgen_tests.step);
