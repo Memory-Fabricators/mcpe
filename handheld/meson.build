@@ -5,7 +5,7 @@
 # OpenAL headers are needed by common sources (SoundEngine.h is included
 # unconditionally from CreatorMode.cpp etc.)
 openal_dep = dependency('openal')
-dedicated_deps = [openal_dep]
+dedicated_deps = [openal_dep, lua_dep]
 
 client_deps = []
 client_cpp_args = []
@@ -14,10 +14,19 @@ if build_client
     sdl3_dep = dependency('sdl3')
     libpng_dep = dependency('libpng')
 
-    client_deps += [sdl3_dep, openal_dep, libpng_dep]
+    client_deps += [sdl3_dep, openal_dep, libpng_dep, lua_dep]
 
-    gles_dep = dependency('glesv1_cm')
-    client_deps += gles_dep
+    use_vulkan = get_option('renderer') == 'vulkan'
+    if use_vulkan
+        client_deps += vk_dep
+        client_cpp_args += '-DUSE_VK'
+    else
+        gles_dep = dependency('glesv1_cm', required: false)
+        if not gles_dep.found()
+            gles_dep = dependency('angle')
+        endif
+        client_deps += gles_dep
+    endif
 
     if host_machine.system() == 'darwin'
         foundation_dep = dependency('appleframeworks', modules: ['Foundation'])

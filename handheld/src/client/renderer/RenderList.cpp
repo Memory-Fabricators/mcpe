@@ -76,7 +76,11 @@ void RenderList::renderChunks() {
     glTexCoordPointer2(2, GL_FLOAT, Stride, (GLvoid *)(3 * 4));
     glColorPointer2(4, GL_UNSIGNED_BYTE, Stride, (GLvoid *)(5 * 4));
 
+#ifdef USE_VK
+    vk_chunk_draw((uint32_t)rc.vboId, (uint32_t)rc.vertexCount);
+#else
     glDrawArrays2(GL_TRIANGLES, 0, rc.vertexCount);
+#endif
 
     glPopMatrix2();
   }

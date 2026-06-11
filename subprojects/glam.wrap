@@ -1,0 +1,8 @@
+[wrap-git]
+url = https://github.com/bitshifter/glam-rs
+revision = main
+depth = 1
+patch_directory = glam
+
+[provide]
+glam = glam_dep

@@ -386,22 +386,22 @@ void TouchscreenInput_TestFps::render(float a) {
   // static Stopwatch sw;
   // sw.start();
 
-  // glColor4f2(1, 0, 1, 1.0f);
-  // glDisable2(GL_CULL_FACE);
-  glDisable2(GL_ALPHA_TEST);
+  // vk_mesh_color_rgb(1, 0, 1, 1.0f);
+  // // TODO: VK disable(GL_CULL_FACE)
+  // TODO: VK disable(GL_ALPHA_TEST)
 
-  glEnable2(GL_BLEND);
+  // TODO: VK enable(GL_BLEND)
   glBlendFunc2(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   _minecraft->textures->loadAndBindTexture("gui/gui.png");
 
-  // glDisable2(GL_TEXTURE_2D);
+  // // TODO: VK disable(GL_TEXTURE_2D)
 
   rebuild();
   // drawArrayVTC(_bufferId, 5 * 2 * 3, 24);
 
-  glDisable2(GL_BLEND);
-  // glEnable2(GL_TEXTURE_2D);
-  // glEnable2(GL_CULL_FACE);
+  // TODO: VK disable(GL_BLEND)
+  // // TODO: VK enable(GL_TEXTURE_2D)
+  // // TODO: VK enable(GL_CULL_FACE)
 
   // sw.stop();
   // sw.printEvery(100, "buttons");

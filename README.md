@@ -5,8 +5,9 @@
 - Fixed multiplayer
 - Added a direct connect option
 - Ported to SDL3
-- Added the CMake build system
-- Added a userame field
+- Added the Meson build system
+- Added a username field
+- Added a lua plugin API
 
 ## Developing With Nix
 

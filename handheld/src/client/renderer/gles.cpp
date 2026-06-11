@@ -6,6 +6,7 @@ static const float __glPi = 3.14159265358979323846f;
 
 static void __gluMakeIdentityf(GLfloat m[16]);
 
+#ifndef USE_VK
 void gluPerspective(GLfloat fovy, GLfloat aspect, GLfloat zNear, GLfloat zFar) {
   GLfloat m[4][4];
   GLfloat sine, cotangent, deltaZ;
@@ -29,23 +30,12 @@ void gluPerspective(GLfloat fovy, GLfloat aspect, GLfloat zNear, GLfloat zFar) {
 }
 
 void __gluMakeIdentityf(GLfloat m[16]) {
-  m[0] = 1;
-  m[4] = 0;
-  m[8] = 0;
-  m[12] = 0;
-  m[1] = 0;
-  m[5] = 1;
-  m[9] = 0;
-  m[13] = 0;
-  m[2] = 0;
-  m[6] = 0;
-  m[10] = 1;
-  m[14] = 0;
-  m[3] = 0;
-  m[7] = 0;
-  m[11] = 0;
-  m[15] = 1;
+  m[0] = 1;  m[4] = 0;  m[8]  = 0;  m[12] = 0;
+  m[1] = 0;  m[5] = 1;  m[9]  = 0;  m[13] = 0;
+  m[2] = 0;  m[6] = 0;  m[10] = 1;  m[14] = 0;
+  m[3] = 0;  m[7] = 0;  m[11] = 0;  m[15] = 1;
 }
+#endif  // !USE_VK
 
 void glInit(SDL_Window *window) {}
 
@@ -56,6 +46,29 @@ void anGenBuffers(GLsizei n, GLuint *buffers) {
 }
 
 #ifdef USE_VBO
+
+#ifdef USE_VK
+// Vulkan path: chunk data was uploaded via vk_chunk_set in Tesselator::end().
+// Just issue the draw call against the persistent buffer.
+void drawArrayVT(int bufferId, int vertices, int vertexSize, unsigned int mode) {
+  vk_chunk_draw((uint32_t)bufferId, (uint32_t)vertices);
+}
+void drawArrayVTC(int bufferId, int vertices, int vertexSize) {
+  vk_chunk_draw((uint32_t)bufferId, (uint32_t)vertices);
+}
+#ifndef drawArrayVT_NoState
+void drawArrayVT_NoState(int bufferId, int vertices, int vertexSize) {
+  vk_chunk_draw((uint32_t)bufferId, (uint32_t)vertices);
+}
+#endif
+#ifndef drawArrayVTC_NoState
+void drawArrayVTC_NoState(int bufferId, int vertices, int vertexSize) {
+  vk_chunk_draw((uint32_t)bufferId, (uint32_t)vertices);
+}
+#endif
+
+#else  // !USE_VK — original GL path
+
 void drawArrayVT(int bufferId, int vertices, int vertexSize,
                  unsigned int mode) {
   glBindBuffer2(GL_ARRAY_BUFFER, bufferId);
@@ -69,54 +82,40 @@ void drawArrayVT(int bufferId, int vertices, int vertexSize,
 }
 
 #ifndef drawArrayVT_NoState
-void drawArrayVT_NoState(int bufferId, int vertices,
-                         int vertexSize /* = 24 */) {
-  // if (Options::debugGl) LOGI("drawArray\n");
+void drawArrayVT_NoState(int bufferId, int vertices, int vertexSize) {
   glBindBuffer2(GL_ARRAY_BUFFER, bufferId);
   glTexCoordPointer2(2, GL_FLOAT, vertexSize, (GLvoid *)(3 * 4));
-  // glEnableClientState2(GL_TEXTURE_COORD_ARRAY);
   glVertexPointer2(3, GL_FLOAT, vertexSize, 0);
-  // glEnableClientState2(GL_VERTEX_ARRAY);
   glDrawArrays2(GL_TRIANGLES, 0, vertices);
-  // glDisableClientState2(GL_VERTEX_ARRAY);
-  // glDisableClientState2(GL_TEXTURE_COORD_ARRAY);
 }
 #endif
 
-void drawArrayVTC(int bufferId, int vertices, int vertexSize /* = 24 */) {
-  // if (Options::debugGl) LOGI("drawArray\n");
-  // LOGI("draw-vtc: %d, %d, %d\n", bufferId, vertices, vertexSize);
+void drawArrayVTC(int bufferId, int vertices, int vertexSize) {
   glEnableClientState2(GL_VERTEX_ARRAY);
   glEnableClientState2(GL_TEXTURE_COORD_ARRAY);
   glEnableClientState2(GL_COLOR_ARRAY);
-
   glBindBuffer2(GL_ARRAY_BUFFER, bufferId);
-
   glVertexPointer2(3, GL_FLOAT, vertexSize, 0);
   glTexCoordPointer2(2, GL_FLOAT, vertexSize, (GLvoid *)(3 * 4));
   glColorPointer2(4, GL_UNSIGNED_BYTE, vertexSize, (GLvoid *)(5 * 4));
-
   glDrawArrays2(GL_TRIANGLES, 0, vertices);
-
   glDisableClientState2(GL_VERTEX_ARRAY);
   glDisableClientState2(GL_TEXTURE_COORD_ARRAY);
   glDisableClientState2(GL_COLOR_ARRAY);
 }
 
 #ifndef drawArrayVTC_NoState
-void drawArrayVTC_NoState(int bufferId, int vertices,
-                          int vertexSize /* = 24 */) {
+void drawArrayVTC_NoState(int bufferId, int vertices, int vertexSize) {
   glBindBuffer2(GL_ARRAY_BUFFER, bufferId);
-
   glVertexPointer2(3, GL_FLOAT, vertexSize, 0);
   glTexCoordPointer2(2, GL_FLOAT, vertexSize, (GLvoid *)(3 * 4));
   glColorPointer2(4, GL_UNSIGNED_BYTE, vertexSize, (GLvoid *)(5 * 4));
-
   glDrawArrays2(GL_TRIANGLES, 0, vertices);
 }
 #endif
 
-#endif
+#endif  // USE_VK
+#endif  // USE_VBO
 
 //
 // Code borrowed from OpenGL.org

@@ -9,7 +9,11 @@
 #include "platform/log.h"
 #ifndef STANDALONE_SERVER
 #include <SDL3/SDL.h>
+#ifndef USE_VK
 #include <SDL3/SDL_opengles.h>
+#else
+#include "mcpe_vk.h"
+#endif
 #endif
 
 typedef struct AppContext {
@@ -50,8 +54,12 @@ public:
 
   void swapBuffers() {
 #ifndef STANDALONE_SERVER
+#ifdef USE_VK
+    vk_end_frame();
+#else
     if (_context.doRender)
       SDL_GL_SwapWindow(_context.window);
+#endif
 #endif
   }
 

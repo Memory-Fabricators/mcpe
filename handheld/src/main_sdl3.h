@@ -10,6 +10,9 @@
 #include <vector>
 
 #include <SDL3/SDL.h>
+#ifdef USE_VK
+#include <SDL3/SDL_vulkan.h>
+#endif
 #include <unistd.h>
 
 #define check() assert(glGetError() == 0)
@@ -153,6 +156,39 @@ static bool _inited_egl = false;
 static bool _app_inited = false;
 static int _app_window_normal = true;
 
+#ifdef USE_VK
+// ---- Vulkan init/shutdown ------------------------------------------------
+
+static void initEgl(App *app, AppContext *state, uint32_t w, uint32_t h) {
+  SDL_ShowWindow(state->window);
+  SDL_RaiseWindow(state->window);
+
+  if (vk_init(state->window, w, h) != 0) {
+    fprintf(stderr, "vk_init failed\n");
+    return;
+  }
+
+  _inited_egl = true;
+  if (!_app_inited) {
+    _app_inited = true;
+    app->init(*state);
+  } else {
+    app->onGraphicsReset(*state);
+  }
+  app->setSize(w, h);
+}
+
+static void deinitEgl(AppContext *state) {
+  if (!_inited_egl)
+    return;
+  vk_shutdown();
+  SDL_DestroyWindow(state->window);
+  state->window = nullptr;
+  _inited_egl = false;
+}
+
+#else  // USE_VK — original GL path ----------------------------------------
+
 static void move_surface(App *app, AppContext *state, uint32_t x, uint32_t y,
                          uint32_t w, uint32_t h);
 
@@ -161,25 +197,18 @@ static void initEgl(App *app, AppContext *state, uint32_t w, uint32_t h) {
 }
 
 static void deinitEgl(AppContext *state) {
-  if (!_inited_egl) {
+  if (!_inited_egl)
     return;
-  }
-
   SDL_GL_MakeCurrent(state->window, nullptr);
   SDL_GL_DestroyContext(state->context);
   SDL_DestroyWindow(state->window);
   state->window = NULL;
-
-  // state->doRender = false;
   _inited_egl = false;
 }
 
 void move_surface(App *app, AppContext *state, uint32_t x, uint32_t y,
                   uint32_t w, uint32_t h) {
-  int32_t success = 0;
-
   deinitEgl(state);
-  // printf("initEgl\n");
 
   state->context = SDL_GL_CreateContext(state->window);
   if (!state->context) {
@@ -202,6 +231,8 @@ void move_surface(App *app, AppContext *state, uint32_t x, uint32_t y,
   }
   app->setSize(w, h);
 }
+
+#endif // USE_VK
 
 void teardown() { SDL_Quit(); }
 
@@ -338,6 +369,9 @@ int handleEvents(App *app, AppContext *state) {
         SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED == event.type) {
       width = event.window.data1;
       height = event.window.data2;
+#ifdef USE_VK
+      vk_resize((uint32_t)width, (uint32_t)height);
+#endif
       app->setSize(width, height);
       continue;
     }
@@ -387,11 +421,15 @@ int main(int argc, char **argv) {
   context.doRender = true;
   context.platform = &platform;
 
+#ifndef USE_VK
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 1);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-  context.window = SDL_CreateWindow("Minecraft", width, height,
-                                    SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+  const SDL_WindowFlags win_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
+#else
+  const SDL_WindowFlags win_flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE;
+#endif
+  context.window = SDL_CreateWindow("Minecraft", width, height, win_flags);
   if (!context.window) {
     fprintf(stderr, "Failed to create window: %s\n", SDL_GetError());
     return EXIT_FAILURE;

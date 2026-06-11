@@ -63,20 +63,25 @@ RenderChunk Tesselator::end(bool useMine, int bufferId) {
       vboId = 0;
 
 #ifdef USE_VBO
-    // Using VBO, use default buffer id only if we don't send in any
     if (!useMine) {
       bufferId = vboIds[vboId];
     }
 #else
-    // Not using VBO - always use the next buffer object
     bufferId = vboIds[vboId];
 #endif
-    int access = GL_STATIC_DRAW; //(accessMode==ACCESS_DYNAMIC) ?
-                                 //GL_DYNAMIC_DRAW : GL_STATIC_DRAW;
+
+#ifdef USE_VK
+    // Upload the vertex data into a persistent VK chunk buffer.
+    // drawArrayVTC/drawArrayVT will later call vk_chunk_draw on the same id.
+    vk_chunk_set((uint32_t)bufferId, _varray, (uint32_t)p);
+    totalSize += p * (int)sizeof(VERTEX);
+#else
+    int access = GL_STATIC_DRAW;
     int bytes = p * sizeof(VERTEX);
     glBindBuffer2(GL_ARRAY_BUFFER, bufferId);
-    glBufferData2(GL_ARRAY_BUFFER, bytes, _varray, access); // GL_STREAM_DRAW
+    glBufferData2(GL_ARRAY_BUFFER, bytes, _varray, access);
     totalSize += bytes;
+#endif
 
 #ifndef USE_VBO
     // 0 1 2 3 4 5 6 7
@@ -344,34 +349,25 @@ void Tesselator::draw() {
   tesselating = false;
 
   if (vertices > 0) {
+#ifdef USE_VK
+    vk_draw_verts(_varray, (uint32_t)vertices);
+#else
     if (++vboId >= vboCounts)
       vboId = 0;
 
     int bufferId = vboIds[vboId];
-
-    int access = GL_DYNAMIC_DRAW; //(accessMode==ACCESS_DYNAMIC) ?
-                                  //GL_DYNAMIC_DRAW : GL_STATIC_DRAW;
     int bytes = p * sizeof(VERTEX);
     glBindBuffer2(GL_ARRAY_BUFFER, bufferId);
-    glBufferData2(GL_ARRAY_BUFFER, bytes, _varray, access); // GL_STREAM_DRAW
+    glBufferData2(GL_ARRAY_BUFFER, bytes, _varray, GL_DYNAMIC_DRAW);
 
     if (hasTexture) {
       glTexCoordPointer2(2, GL_FLOAT, VertexSizeBytes, (GLvoid *)(3 * 4));
-      // glTexCoordPointer2(2, GL_FLOAT, VertexSizeBytes, (GLvoid*)
-      // &_varray->u);
       glEnableClientState2(GL_TEXTURE_COORD_ARRAY);
     }
     if (hasColor) {
       glColorPointer2(4, GL_UNSIGNED_BYTE, VertexSizeBytes, (GLvoid *)(5 * 4));
-      // glColorPointer2(4, GL_UNSIGNED_BYTE, VertexSizeBytes, (GLvoid*)
-      // &_varray->color);
       glEnableClientState2(GL_COLOR_ARRAY);
     }
-    // if (hasNormal) {
-    //	glNormalPointer(GL_BYTE, VertexSizeBytes, (GLvoid*) (6 * 4));
-    //	glEnableClientState2(GL_NORMAL_ARRAY);
-    // }
-    // glVertexPointer2(3, GL_FLOAT, VertexSizeBytes, (GLvoid*)&_varray);
     glVertexPointer2(3, GL_FLOAT, VertexSizeBytes, 0);
     glEnableClientState2(GL_VERTEX_ARRAY);
 
@@ -386,7 +382,7 @@ void Tesselator::draw() {
       glDisableClientState2(GL_TEXTURE_COORD_ARRAY);
     if (hasColor)
       glDisableClientState2(GL_COLOR_ARRAY);
-    // if (hasNormal) glDisableClientState2(GL_NORMAL_ARRAY);
+#endif  // USE_VK
   }
 
   clear();

@@ -109,7 +109,7 @@ void Chunk::rebuild() {
             if (!started) {
               started = true;
 
-#ifndef USE_VBO
+#if !defined(USE_VBO) && !defined(USE_VK)
               glNewList(lists + l, GL_COMPILE);
               glPushMatrix2();
               translateToPos();
@@ -152,7 +152,7 @@ void Chunk::rebuild() {
 
     if (started) {
 
-#ifdef USE_VBO
+#if defined(USE_VBO) || defined(USE_VK)
       renderChunk[l] = t.end(true, vboBuffers[l]);
       renderChunk[l].pos.x = (float)this->x;
       renderChunk[l].pos.y = (float)this->y;

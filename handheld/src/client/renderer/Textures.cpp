@@ -22,10 +22,12 @@ Textures::~Textures() {
 }
 
 void Textures::clear() {
+#ifndef USE_VK
   for (TextureMap::iterator it = idMap.begin(); it != idMap.end(); ++it) {
     if (it->second != Textures::InvalidId)
       glDeleteTextures(1, &it->second);
   }
+#endif
   for (TextureImageMap::iterator it = loadedImages.begin();
        it != loadedImages.end(); ++it) {
     if (!(it->second).memoryHandledExternally)
@@ -73,6 +75,14 @@ TextureId Textures::loadTexture(const std::string &resourceName,
 TextureId Textures::assignTexture(const std::string &resourceName,
                                   const TextureData &img) {
   TextureId id;
+
+#ifdef USE_VK
+  // SDL3 platform loads PNGs as RGBA8; pass through directly.
+  // Compressed / packed formats are unsupported on desktop and skipped.
+  id = (TextureId)vk_texture_load(
+      (const uint8_t *)img.data, (uint32_t)img.w, (uint32_t)img.h,
+      img.transparent ? 1 : 0);
+#else
   glGenTextures(1, &id);
 
   bind(id);
@@ -105,15 +115,13 @@ TextureId Textures::assignTexture(const std::string &resourceName,
 #if defined(__APPLE__)
     int fmt = img.transparent ? GL_COMPRESSED_RGBA_PVRTC_4BPPV1_IMG
                               : GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG;
-    glCompressedTexImage2D(GL_TEXTURE_2D, 0, fmt, img.w, img.h, 0, img.numBytes,
-                           img.data);
+    glCompressedTexImage2D(GL_TEXTURE_2D, 0, fmt, img.w, img.h, 0,
+                           img.numBytes, img.data);
 #endif
     break;
   }
-
-  default:
+  default: {
     const GLint mode = img.transparent ? GL_RGBA : GL_RGB;
-
     if (img.format == TEXF_UNCOMPRESSED_565) {
       glTexImage2D2(GL_TEXTURE_2D, 0, mode, img.w, img.h, 0, mode,
                     GL_UNSIGNED_SHORT_5_6_5, img.data);
@@ -129,11 +137,11 @@ TextureId Textures::assignTexture(const std::string &resourceName,
     }
     break;
   }
+  }
+#endif  // USE_VK
 
-  // LOGI("Adding id: %d to map\n", id);
   idMap.insert(std::make_pair(resourceName, id));
   loadedImages.insert(std::make_pair(id, img));
-
   return id;
 }
 
@@ -154,9 +162,17 @@ void Textures::tick(bool uploadToGraphicsCard) {
       tex->bindTexture(this);
       for (int xx = 0; xx < tex->replicate; xx++)
         for (int yy = 0; yy < tex->replicate; yy++) {
+#ifdef USE_VK
+          vk_texture_update_sub(
+              (uint32_t)lastBoundTexture,
+              (uint32_t)(tex->tex % 16 * 16 + xx * 16),
+              (uint32_t)(tex->tex / 16 * 16 + yy * 16),
+              16, 16, (const uint8_t *)tex->pixels);
+#else
           glTexSubImage2D2(GL_TEXTURE_2D, 0, tex->tex % 16 * 16 + xx * 16,
                            tex->tex / 16 * 16 + yy * 16, 16, 16, GL_RGBA,
                            GL_UNSIGNED_BYTE, tex->pixels);
+#endif
         }
     }
   }

@@ -30,7 +30,11 @@ public:
 
   __inline void bind(TextureId id) {
     if (id != Textures::InvalidId && lastBoundTexture != id) {
+#ifdef USE_VK
+      vk_texture_bind((uint32_t)id);
+#else
       glBindTexture2(GL_TEXTURE_2D, id);
+#endif
       lastBoundTexture = id;
       ++textureChanges;
     } else if (id == Textures::InvalidId) {

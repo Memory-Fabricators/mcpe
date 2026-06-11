@@ -4,3 +4,11 @@ option(
     value: true,
     description: 'Build the client (mcpe_sdl3)',
 )
+
+option(
+    'renderer',
+    type: 'combo',
+    choices: ['gles1', 'vulkan'],
+    value: 'gles1',
+    description: 'Rendering backend for the client',
+)

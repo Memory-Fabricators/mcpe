@@ -5,6 +5,7 @@
   meson,
   rustc,
   rust-cbindgen,
+  rustPlatform,
   ninja,
   nixfmt,
   nixd,
@@ -43,7 +44,7 @@ stdenv.mkDerivation {
     wayland
   ];
 
-  mesonFlags  = [
+  mesonFlags = [
   ];
 
   postInstall = ''

@@ -16,7 +16,9 @@
 #include "Tesselator.h"
 #include "Textures.h"
 #include "culling/AllowAllCuller.h"
+#ifndef USE_VK
 #include "culling/FrustumCuller.h"
+#endif
 #include "entity/EntityRenderDispatcher.h"
 #include "platform/input/Controller.h"
 #include "platform/input/Mouse.h"
@@ -81,6 +83,12 @@ void GameRenderer::setupCamera(float a, int eye) {
     renderDistance *= 0.8f;
 #endif
 
+#ifdef USE_VK
+  _setupCameraFov = getFov(a, true);
+  vk_projection_perspective(_setupCameraFov,
+                             mc->width / (float)mc->height, 0.05f, renderDistance);
+  vk_load_identity();
+#else
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity2();
 
@@ -101,6 +109,7 @@ void GameRenderer::setupCamera(float a, int eye) {
   glLoadIdentity2();
   if (mc->options.anaglyph3d)
     glTranslatef2((eye * 2 - 1) * 0.10f, 0, 0);
+#endif
 
   bobHurt(a);
   if (mc->options.bobView)
@@ -157,6 +166,15 @@ void GameRenderer::render(float a) {
   bool hasClearedColorBuffer = false;
   bool hasSetupGuiScreen = false;
   useScreenScissor = false;
+
+#ifdef USE_VK
+  // Begin the Vulkan frame here, before any pass function is called.
+  // setupClearColor updates the stored colour; the next begin_frame picks it up.
+  if (vk_begin_frame() != 0)
+    return; // swapchain rebuilt this tick
+  vk_pass_opaque(); // default pipeline for any geometry rendered before a pass switch
+#endif
+
   if (mc->isLevelGenerated()) {
 
     TIMER_PUSH("level");
@@ -235,6 +253,10 @@ void GameRenderer::renderLevel(float a) {
   float yOff = cameraEntity->yOld + (cameraEntity->y - cameraEntity->yOld) * a;
   float zOff = cameraEntity->zOld + (cameraEntity->z - cameraEntity->zOld) * a;
 
+#ifdef USE_VK
+  setupClearColor(a); // updates clear_color for the NEXT frame's begin_frame
+#endif
+
   for (int i = 0; i < 2; i++) {
     if (mc->options.anaglyph3d) {
       if (i == 0)
@@ -277,8 +299,13 @@ void GameRenderer::renderLevel(float a) {
     }
 
     TIMER_POP_PUSH("frustrum");
+#ifdef USE_VK
+    AllowAllCuller frustum;
+    (void)xOff; (void)yOff; (void)zOff;
+#else
     FrustumCuller frustum;
     frustum.prepare(xOff, yOff, zOff);
+#endif
 
     TIMER_POP_PUSH("culling");
     mc->levelRenderer->cull(&frustum, a);
@@ -296,10 +323,16 @@ void GameRenderer::renderLevel(float a) {
     glDisable2(GL_BLEND);
     glEnable2(GL_CULL_FACE);
     TIMER_POP_PUSH("terrain-0");
+#ifdef USE_VK
+    vk_pass_opaque();
+#endif
     levelRenderer->render(cameraEntity, 0, a);
 
     TIMER_POP_PUSH("terrain-1");
     glEnable2(GL_ALPHA_TEST);
+#ifdef USE_VK
+    vk_pass_alpha_test();
+#endif
     levelRenderer->render(cameraEntity, 1, a);
 
     glShadeModel2(GL_FLAT);
@@ -334,6 +367,9 @@ void GameRenderer::renderLevel(float a) {
       // glDepthMask(GL_FALSE);
       TIMER_POP_PUSH("terrain-water");
       glEnable2(GL_DEPTH_TEST);
+#ifdef USE_VK
+      vk_pass_transparent();
+#endif
       levelRenderer->render(cameraEntity, 2, a);
       // glDepthRangef(0, 1);
     }
@@ -369,6 +405,9 @@ void GameRenderer::renderLevel(float a) {
     if (zoom == 1) {
       TIMER_POP_PUSH("hand");
       glClear(GL_DEPTH_BUFFER_BIT);
+#ifdef USE_VK
+      vk_pass_items();
+#endif
       renderItemInHand(a, i);
     }
 
@@ -550,44 +589,27 @@ void GameRenderer::bobView(float a) {
 /*private*/
 void GameRenderer::setupFog(int i) {
   Mob *player = mc->cameraTargetPlayer;
-  float fogBuffer[4] = {fr, fg, fb, 1};
 
+#ifdef USE_VK
+  if (player->isUnderLiquid(Material::water)) {
+    vk_fog_exp(0.1f, fr, fg, fb);
+  } else if (player->isUnderLiquid(Material::lava)) {
+    vk_fog_exp(2.0f, fr, fg, fb);
+  } else {
+    float start = (i < 0 || mc->level->dimension->foggy) ? 0.0f : renderDistance * 0.6f;
+    vk_fog_linear(start, renderDistance, fr, fg, fb);
+  }
+#else
+  float fogBuffer[4] = {fr, fg, fb, 1};
   glFogfv(GL_FOG_COLOR, (GLfloat *)fogBuffer);
   glColor4f2(1, 1, 1, 1);
 
   if (player->isUnderLiquid(Material::water)) {
     glFogx(GL_FOG_MODE, GL_EXP);
-    glFogf(GL_FOG_DENSITY, 0.1f); // was 0.06
-
-    //        float rr = 0.4f;
-    //        float gg = 0.4f;
-    //        float bb = 0.9f;
-    //
-    //        if (mc->options.anaglyph3d) {
-    //            float rrr = (rr * 30 + gg * 59 + bb * 11) / 100;
-    //            float ggg = (rr * 30 + gg * 70) / (100);
-    //            float bbb = (rr * 30 + bb * 70) / (100);
-    //
-    //            rr = rrr;
-    //            gg = ggg;
-    //            bb = bbb;
-    //        }
+    glFogf(GL_FOG_DENSITY, 0.1f);
   } else if (player->isUnderLiquid(Material::lava)) {
     glFogx(GL_FOG_MODE, GL_EXP);
-    glFogf(GL_FOG_DENSITY, 2.f); // was 0.06
-                                 //        float rr = 0.4f;
-                                 //        float gg = 0.3f;
-                                 //        float bb = 0.3f;
-                                 //
-                                 //        if (mc->options.anaglyph3d) {
-    //            float rrr = (rr * 30 + gg * 59 + bb * 11) / 100;
-    //            float ggg = (rr * 30 + gg * 70) / (100);
-    //            float bbb = (rr * 30 + bb * 70) / (100);
-    //
-    //            rr = rrr;
-    //            gg = ggg;
-    //            bb = bbb;
-    //        }
+    glFogf(GL_FOG_DENSITY, 2.f);
   } else {
     glFogx(GL_FOG_MODE, GL_LINEAR);
     glFogf(GL_FOG_START, renderDistance * 0.6f);
@@ -596,14 +618,11 @@ void GameRenderer::setupFog(int i) {
       glFogf(GL_FOG_START, 0);
       glFogf(GL_FOG_END, renderDistance * 1.0f);
     }
-
-    if (mc->level->dimension->foggy) {
+    if (mc->level->dimension->foggy)
       glFogf(GL_FOG_START, 0);
-    }
   }
-
   glEnable2(GL_COLOR_MATERIAL);
-  // glColorMaterial(GL_FRONT, GL_AMBIENT);
+#endif
 }
 
 void GameRenderer::updateAllChunks() {
@@ -873,7 +892,12 @@ void GameRenderer::setupGuiScreen(bool clearColorBuffer) {
   int screenWidth = (int)(mc->width * Gui::InvGuiScale);
   int screenHeight = (int)(mc->height * Gui::InvGuiScale);
 
-  // Setup GUI render mode
+#ifdef USE_VK
+  vk_pass_gui();  // clears depth, switches to GUI pipeline, disables fog
+  vk_projection_ortho(0, (float)screenWidth, (float)screenHeight, 0, 2000, 3000);
+  vk_load_identity();
+  vk_translate(0, 0, -2000);
+#else
   GLbitfield clearBits = clearColorBuffer
                              ? GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT
                              : GL_DEPTH_BUFFER_BIT;
@@ -884,6 +908,7 @@ void GameRenderer::setupGuiScreen(bool clearColorBuffer) {
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity2();
   glTranslatef2(0, 0, -2000);
+#endif
 }
 
 /*private*/
@@ -903,11 +928,16 @@ void GameRenderer::renderItemInHand(float a, int eye) {
     if (!mc->options.hideGui) {
       float fov = getFov(a, false);
       if (fov != _setupCameraFov) {
+#ifdef USE_VK
+        vk_projection_perspective(fov, mc->width / (float)mc->height, 0.05f, renderDistance);
+#else
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
         gluPerspective(fov, mc->width / (float)mc->height, 0.05f,
                        renderDistance);
         glMatrixMode(GL_MODELVIEW);
+#endif
+        _setupCameraFov = fov;
       }
       itemInHandRenderer->render(a);
     }
@@ -950,8 +980,13 @@ void GameRenderer::prepareAndRenderClouds(LevelRenderer *levelRenderer,
   glMatrixMode(GL_PROJECTION);
   glPushMatrix2();
   glLoadIdentity2();
+#ifdef USE_VK
+  vk_projection_perspective(_setupCameraFov = getFov(a, true),
+                             mc->width / (float)mc->height, 2, renderDistance * 512);
+#else
   gluPerspective(_setupCameraFov = getFov(a, true),
                  mc->width / (float)mc->height, 2, renderDistance * 512);
+#endif
   glMatrixMode(GL_MODELVIEW);
   glPushMatrix2();
   setupFog(0);
@@ -962,7 +997,13 @@ void GameRenderer::prepareAndRenderClouds(LevelRenderer *levelRenderer,
   levelRenderer->renderSky(a);
   glFogf(GL_FOG_START, renderDistance * 4.2f * 0.6f);
   glFogf(GL_FOG_END, renderDistance * 4.2f);
+#ifdef USE_VK
+  vk_pass_transparent(); // clouds are semi-transparent; use blend+no-depth-write
+#endif
   levelRenderer->renderClouds(a);
+#ifdef USE_VK
+  vk_pass_opaque();
+#endif
   glFogf(GL_FOG_START, renderDistance * 0.6f);
   glFogf(GL_FOG_END, renderDistance);
   glDisable2(GL_FOG);

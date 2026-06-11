@@ -1,0 +1,8 @@
+[wrap-git]
+url = https://github.com/ash-rs/ash.git
+revision = master
+depth = 1
+patch_directory = ash
+
+[provide]
+ash = ash_dep

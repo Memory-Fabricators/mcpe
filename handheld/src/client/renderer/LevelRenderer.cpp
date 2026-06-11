@@ -54,7 +54,7 @@ LevelRenderer::LevelRenderer(Minecraft *mc)
 
       ticks(0), skyList(0), starList(0), darkList(0), tileRenderer(NULL),
       destroyProgress(0) {
-#ifdef OPENGL_ES
+#if defined(OPENGL_ES) || defined(USE_VK)
   int maxChunksWidth = 2 * LEVEL_WIDTH / CHUNK_SIZE + 1;
   numListsOrBuffers = maxChunksWidth * maxChunksWidth * (128 / CHUNK_SIZE) * 3;
   chunkBuffers = new GLuint[numListsOrBuffers];
@@ -78,7 +78,7 @@ LevelRenderer::~LevelRenderer() {
 
   deleteChunks();
 
-#ifdef OPENGL_ES
+#if defined(OPENGL_ES) || defined(USE_VK)
   glDeleteBuffers(numListsOrBuffers, chunkBuffers);
   glDeleteBuffers(1, &skyBuffer);
   delete[] chunkBuffers;
@@ -1312,7 +1312,7 @@ void LevelRenderer::onGraphicsReset() {
   generateSky();
 
   // Get new buffers
-#ifdef OPENGL_ES
+#if defined(OPENGL_ES) || defined(USE_VK)
   glGenBuffers2(numListsOrBuffers, chunkBuffers);
 #else
   chunkLists = glGenLists(numListsOrBuffers);

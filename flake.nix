@@ -1,6 +1,6 @@
 {
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
   };
 
   outputs =
@@ -15,19 +15,72 @@
     in
     {
       packages = eachSystem (
-        system: with nixpkgs.legacyPackages.${system}; {
-          default = callPackage ./default.nix {
-            stdenv = llvmPackages.stdenv;
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        with pkgs;
+        {
+          default = rustPlatform.buildRustPackage {
+            pname = "mcpe";
+            version = "0.1.0";
+            src = ./.;
+
+            cargoLock.lockFile = ./Cargo.lock;
+
+            nativeBuildInputs = [
+              pkg-config
+              rust-cbindgen
+              vulkan-headers
+              vulkan-loader
+              libxkbcommon
+              wayland
+              wayland-scanner
+            ];
+
+            buildInputs = [
+              sdl3
+              libpng
+              openal
+              lua5_5
+              angle
+              vulkan-loader
+              libxkbcommon
+              wayland
+              libx11
+              libxcursor
+              libxi
+              libxrandr
+            ];
+
+            LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [
+              sdl3
+              libpng
+              openal
+              lua5_5
+              vulkan-loader
+              wayland
+              libxkbcommon
+              libx11
+              libxcursor
+              libxi
+              libxrandr
+            ];
           };
         }
       );
 
       devShells = eachSystem (
-        system: with nixpkgs.legacyPackages.${system}; {
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        with pkgs;
+        {
           default =
             mkShell.override
               {
-                stdenv = llvmPackages.stdenv;
+                stdenv = if stdenv.hostPlatform.isLinux then useWildLinker stdenv else stdenv;
               }
               rec {
                 nativeBuildInputs = [
@@ -37,23 +90,36 @@
                   nixfmt
                   nixd
                   rustc
+                  cargo
                   rust-cbindgen
-                  llvmPackages.clang-tools
+                  rustfmt
+                  clippy
+                  rust-analyzer
+                  vulkan-headers
+                  vulkan-loader
+                  libxkbcommon
+                  wayland
+                  wayland-scanner
                 ];
 
                 buildInputs = [
-                  libGL
                   angle
                   libpng
                   openal
                   sdl3
-                ]
-                ++ lib.optionals stdenv.hostPlatform.isLinux [
+                  lua5_5
+                  vulkan-loader
+                  libxkbcommon
                   wayland
+                  libx11
+                  libxcursor
+                  libxi
+                  libxrandr
                 ];
 
-                LD_LIBRARY_PATH = lib.makeLibraryPath buildInputs;
-                DYLD_LIBRARY_PATH = lib.makeLibraryPath buildInputs;
+                LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath buildInputs;
+                DYLD_LIBRARY_PATH = pkgs.lib.makeLibraryPath buildInputs;
+                RUST_SRC_PATH = rustPlatform.rustLibSrc;
               };
         }
       );

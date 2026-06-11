@@ -3,8 +3,8 @@
 # ---- Common client sources (shared by dedicated server AND sdl3 client) ----
 
 client_common_sources += files(
-    'IConfigListener.cpp',
     'Minecraft.cpp',
+    'IConfigListener.cpp',
     'OptionStrings.cpp',
     'Options.cpp',
     'OptionsFile.cpp',

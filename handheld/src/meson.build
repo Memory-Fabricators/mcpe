@@ -8,6 +8,10 @@ subdir('raknet')
 world_sources = []
 subdir('world')
 
+# lua_plugin_sources = []
+# lua_plugin_client_sources = []
+# subdir('lua_plugin')
+
 client_common_sources = []
 client_only_sources = []
 if build_client
@@ -51,6 +55,7 @@ endif
 
 platform_common_sources = files(
     'platform/time.cpp',
+    'platform/input/Mouse.cpp',
 )
 
 platform_client_sources = []
@@ -59,7 +64,6 @@ if build_client
         'platform/audio/SoundSystemAL.cpp',
         'platform/input/Controller.cpp',
         'platform/input/Keyboard.cpp',
-        'platform/input/Mouse.cpp',
         'platform/input/Multitouch.cpp',
     )
 endif

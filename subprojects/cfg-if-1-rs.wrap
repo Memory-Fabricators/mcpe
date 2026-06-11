@@ -1,0 +1,6 @@
+[wrap-git]
+url = https://github.com/rust-lang/cfg-if
+revision = main
+depth = 1
+method = cargo
+

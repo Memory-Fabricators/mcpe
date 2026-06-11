@@ -228,9 +228,7 @@ void MinecraftApp::updateStats() {
 }
 
 void MinecraftApp::initGLStates() {
-#ifndef STANDALONE_SERVER
-  // glShadeModel2(GL_SMOOTH);
-  // glClearDepthf(1.0f);
+#if !defined(STANDALONE_SERVER) && !defined(USE_VK)
   glEnable2(GL_DEPTH_TEST);
   glDepthFunc(GL_LEQUAL);
   glDepthRangef(0, 1);
@@ -238,18 +236,15 @@ void MinecraftApp::initGLStates() {
   glAlphaFunc(GL_GREATER, 0.1f);
   glEnable(GL_CULL_FACE);
   glCullFace(GL_BACK);
-
   glEnable2(GL_TEXTURE_2D);
   glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
-
-  // Both updates isPowerVR flag in java and returns if the graphics chip is
-  // PowerVR SGX or not
+#endif
+#ifndef STANDALONE_SERVER
   _powerVr = platform()->isPowerVR();
 #ifdef __APPLE__
   _isSuperFast = platform()->isSuperFast();
 #endif
-  // glLineWidth(4);
-#endif /* STANDALONE_SERVER */
+#endif
 }
 
 void MinecraftApp::restartServer() {

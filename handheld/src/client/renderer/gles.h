@@ -48,7 +48,9 @@ void drawArrayVTC_NoState(int bufferId, int vertices, int vertexSize4);
 #endif
 
 void glInit(SDL_Window *window);
+#ifndef USE_VK
 void gluPerspective(GLfloat fovy, GLfloat aspect, GLfloat zNear, GLfloat zFar);
+#endif
 int glhUnProjectf(float winx, float winy, float winz, float *modelview,
                   float *projection, int *viewport, float *objectCoordinate);
 
@@ -270,5 +272,144 @@ int glhUnProjectf(float winx, float winy, float winz, float *modelview,
 #else
 #define glGetProcAddress(a) (void *(0))
 #endif
+
+#ifdef USE_VK
+// ---------------------------------------------------------------------------
+// Vulkan backend: redirect every GL call to its vk_* equivalent or a no-op.
+// Included after the GLDEBUG macro block so we always win the redefinition.
+// ---------------------------------------------------------------------------
+#include "mcpe_vk.h"
+
+// Matrix stack – direct 1:1 mapping
+#undef  glMatrixMode
+#undef  glLoadIdentity
+#undef  glLoadIdentity2
+#undef  glPushMatrix
+#undef  glPushMatrix2
+#undef  glPopMatrix
+#undef  glPopMatrix2
+#undef  glTranslatef
+#undef  glTranslatef2
+#undef  glRotatef
+#undef  glRotatef2
+#undef  glScalef
+#undef  glScalef2
+#define glMatrixMode(x)           ((void)0)
+#define glLoadIdentity()          vk_load_identity()
+#define glLoadIdentity2()         vk_load_identity()
+#define glPushMatrix()            vk_push_matrix()
+#define glPushMatrix2()           vk_push_matrix()
+#define glPopMatrix()             vk_pop_matrix()
+#define glPopMatrix2()            vk_pop_matrix()
+#define glTranslatef(x,y,z)       vk_translate(x,y,z)
+#define glTranslatef2(x,y,z)      vk_translate(x,y,z)
+#define glRotatef(a,x,y,z)        vk_rotate(a,x,y,z)
+#define glRotatef2(a,x,y,z)       vk_rotate(a,x,y,z)
+#define glScalef(x,y,z)           vk_scale(x,y,z)
+#define glScalef2(x,y,z)          vk_scale(x,y,z)
+#define glMultMatrixf(m)          ((void)0)
+
+// GL state – render passes handle blend/depth/cull
+#undef  glEnable
+#undef  glEnable2
+#undef  glDisable
+#undef  glDisable2
+#undef  glBlendFunc
+#undef  glBlendFunc2
+#undef  glDepthMask
+#undef  glShadeModel
+#undef  glShadeModel2
+#undef  glColorMask
+#undef  glColor4f
+#undef  glColor4f2
+#define glEnable(x)               ((void)0)
+#define glEnable2(x)              ((void)0)
+#define glDisable(x)              ((void)0)
+#define glDisable2(x)             ((void)0)
+#define glBlendFunc(s,d)          ((void)0)
+#define glBlendFunc2(s,d)         ((void)0)
+#define glDepthMask(x)            ((void)0)
+#define glShadeModel(x)           ((void)0)
+#define glShadeModel2(x)          ((void)0)
+#define glColorMask(r,g,b,a)      ((void)0)
+#define glColor4f(r,g,b,a)        ((void)0)
+#define glColor4f2(r,g,b,a)       ((void)0)
+#define glDepthFunc(x)            ((void)0)
+#define glDepthRangef(n,f)        ((void)0)
+#define glAlphaFunc(f,v)          ((void)0)
+#define glHint(t,m)               ((void)0)
+#define glCullFace(x)             ((void)0)
+#define glFogfv(p,v)              ((void)0)
+#define glFogx(p,v)               ((void)0)
+#define glFogf(p,v)               ((void)0)
+
+// Clear – render pass handles colour; depth handled by vk_pass_gui/items
+#undef  glClearColor
+#undef  glClear
+#define glClearColor(r,g,b,a)     vk_set_clear_color(r,g,b,a)
+#define glClear(x)                ((void)0)
+
+// Viewport – begin_frame sets this up
+#define glViewport(x,y,w,h)       ((void)0)
+
+// Texture bind (assignTexture/tick use explicit #ifdef; this covers stray sites)
+#undef  glBindTexture
+#undef  glBindTexture2
+#define glBindTexture(t,id)       vk_texture_bind(id)
+#define glBindTexture2(t,id)      vk_texture_bind(id)
+
+// Scissor
+#undef  glScissor
+#define glScissor(x,y,w,h)        vk_set_scissor(x,y,w,h,1)
+
+// GL client state / VBO – all no-ops (Tesselator redirects to vk_chunk_set)
+#undef  glEnableClientState2
+#undef  glDisableClientState2
+#undef  glVertexPointer2
+#undef  glTexCoordPointer2
+#undef  glColorPointer2
+#undef  glDrawArrays2
+#undef  glGenBuffers2
+#undef  glBindBuffer2
+#undef  glBufferData2
+#undef  glTexParameteri2
+#undef  glTexImage2D2
+#undef  glTexSubImage2D2
+#define glEnableClientState2(x)                  ((void)0)
+#define glDisableClientState2(x)                 ((void)0)
+#define glVertexPointer2(s,t,st,p)               ((void)0)
+#define glTexCoordPointer2(s,t,st,p)             ((void)0)
+#define glColorPointer2(s,t,st,p)                ((void)0)
+#define glDrawArrays2(m,o,v)                     ((void)0)
+#define glGenBuffers2(n,ids)   anGenBuffers(n,ids)  // real IDs needed for chunk slot tracking
+#define glBindBuffer2(tgt,id)  ((void)0)
+#define glBufferData2(t,sz,d,u) ((void)0)
+#define glTexParameteri2(t,p,v)                  ((void)0)
+#define glTexImage2D2(t,l,i,w,h,b,f,ty,d)       ((void)0)
+#define glTexSubImage2D2(t,l,x,y,w,h,f,ty,d)    ((void)0)
+
+// glGetFloatv – used by FrustumCuller; redirect to vk matrix getters
+#define glGetFloatv(pname, params)  \
+    do { \
+        if ((pname) == GL_PROJECTION_MATRIX) vk_get_projection_matrix(params); \
+        else if ((pname) == GL_MODELVIEW_MATRIX) vk_get_modelview_matrix(params); \
+    } while(0)
+
+// Polygon offset — no equivalent in this renderer (depth bias can be added later)
+// glOrthof – forward to vk_projection_ortho (l,r,b,t,n,f param order matches)
+#define glOrthof(l,r,b,t,n,f)  vk_projection_ortho(l,r,b,t,n,f)
+
+#define glNormal3f(x,y,z)      ((void)0)
+#define glPolygonOffset(f, u)  ((void)0)
+#define glLineWidth(w)         ((void)0)
+#define glDeleteBuffers(n, p)  ((void)0)
+#define glDeleteTextures(n, p) ((void)0)
+
+// Error check no-op
+#undef  GLERR
+#define GLERR(x) ((void)0)
+#define glGetError() 0
+
+#endif /* USE_VK */
 
 #endif /*NET_MINECRAFT_CLIENT_RENDERER__gles_H__ */
