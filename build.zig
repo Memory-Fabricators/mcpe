@@ -1,13 +1,23 @@
 const std = @import("std");
 
-pub fn build(b: *std.Build) void {
+pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
     const use_llvm = b.option(bool, "use-llvm", "Use LLVM for compilation") orelse true;
     const use_lld = b.option(bool, "use-lld", "Use LLD for linking") orelse false;
 
-    const vk_sdk_abs = b.graph.environ_map.get("VULKAN_SDK") orelse "/usr/local";
+    const vk_sdk_abs = b.option([]const u8, "vulkan-sdk", "Path to Vulkan SDK") orelse "/usr/local";
+    const config_options = b.addOptions();
+
+    const vk_lib_filename = switch (target.result.os.tag) {
+        .macos => b.pathJoin(&.{ vk_sdk_abs, "lib/libvulkan.dylib" }),
+        .linux => b.pathJoin(&.{ vk_sdk_abs, "lib/libvulkan.so" }),
+        .windows => b.pathJoin(&.{ vk_sdk_abs, "lib/libvulkan-1.dll" }),
+        else => @panic("Unsupported OS"),
+    };
+    const vk_lib_z = try b.allocator.dupeSentinel(u8, vk_lib_filename, 0);
+    config_options.addOption([:0]const u8, "vulkan_library_path", vk_lib_z);
 
     const random_mod = b.addModule("random", .{
         .root_source_file = b.path("src/util/random.zig"),
@@ -42,6 +52,7 @@ pub fn build(b: *std.Build) void {
             .{ .name = "png", .module = png_mod },
         },
     });
+    renderer_mod.addOptions("config", config_options);
 
     // Compile shaders (glslc must be on PATH or in VulkanSDK)
     const shader_step = b.step("shaders", "Compile GLSL shaders to SPIR-V");
@@ -74,14 +85,10 @@ pub fn build(b: *std.Build) void {
             },
         },
     });
-    // SDL3 dylib
-    renderer_demo_mod.addLibraryPath(.{ .cwd_relative = "/usr/local/lib" });
-    renderer_demo_mod.addRPath(.{ .cwd_relative = "/usr/local/lib" });
     renderer_demo_mod.linkSystemLibrary("SDL3", .{});
-    // Vulkan loader dylib (MoltenVK-backed, from VulkanSDK)
     renderer_demo_mod.addLibraryPath(.{ .cwd_relative = b.pathJoin(&.{ vk_sdk_abs, "lib" }) });
     renderer_demo_mod.addRPath(.{ .cwd_relative = b.pathJoin(&.{ vk_sdk_abs, "lib" }) });
-    renderer_demo_mod.linkSystemLibrary("vulkan", .{});
+    // renderer_demo_mod.linkSystemLibrary("vulkan", .{});
     renderer_demo_mod.link_libc = true;
 
     const renderer_exe = b.addExecutable(.{
@@ -98,17 +105,12 @@ pub fn build(b: *std.Build) void {
     const vk_icd = b.pathJoin(&.{ vk_sdk_abs, "share/vulkan/icd.d/libkosmickrisp_icd.json" });
     const vk_layers = b.pathJoin(&.{ vk_sdk_abs, "share/vulkan/explicit_layer.d" });
     const vk_dyld = b.pathJoin(&.{ vk_sdk_abs, "lib" });
+    const combined_layers = b.fmt("{s}:{s}", .{ vk_layers, vk_dyld });
     run_rnd.setEnvironmentVariable("VK_ICD_FILENAMES", vk_icd);
     run_rnd.setEnvironmentVariable("VK_DRIVER_FILES", vk_icd);
-    run_rnd.setEnvironmentVariable("VK_ADD_LAYER_PATH", vk_layers);
-    run_rnd.setEnvironmentVariable("VK_LAYER_PATH", vk_layers);
+    run_rnd.setEnvironmentVariable("VK_ADD_LAYER_PATH", combined_layers);
     run_rnd.setEnvironmentVariable("DYLD_LIBRARY_PATH", vk_dyld);
-    // MoltenVK: async queue submit so vkQueueSubmit returns immediately
-    // (correct Vulkan semantics; synchronous is MoltenVK-specific non-standard default)
-    run_rnd.setEnvironmentVariable("MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS", "0");
-    // Prevent Metal shader compilation from making the GPU appear hung (TDR).
-    // With DISABLE_OPTIMIZATION, compilation should take <1s anyway.
-    run_rnd.setEnvironmentVariable("MVK_CONFIG_METAL_COMPILE_TIMEOUT", "5000");
+    run_rnd.setEnvironmentVariable("VK_INSTANCE_LAYERS", "VK_LAYER_KHRONOS_validation");
     run_renderer_step.dependOn(&run_rnd.step);
     run_rnd.step.dependOn(b.getInstallStep());
 

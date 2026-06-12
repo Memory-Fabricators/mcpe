@@ -8,6 +8,7 @@ const std = @import("std");
 const Random = @import("random").Random;
 const PerlinNoise = @import("synth/perlin_noise.zig").PerlinNoise;
 pub const chunk = @import("chunk.zig");
+const save = @import("save.zig");
 
 const ChunkPos = chunk.ChunkPos;
 const DataLayer = chunk.DataLayer;
@@ -113,6 +114,10 @@ pub const RandomLevelSource = struct {
     allocator: std.mem.Allocator,
     random: Random,
     seed: i64,
+    world_time: u64 = 0,
+
+    /// If set, chunks will be loaded from / saved to this directory.
+    world_dir: ?[]const u8 = null,
 
     lperlin_noise1: PerlinNoise,
     lperlin_noise2: PerlinNoise,
@@ -194,10 +199,63 @@ pub const RandomLevelSource = struct {
         self.* = undefined;
     }
 
+    /// Save all currently-generated chunks to disk.
+    pub fn saveAllChunks(self: *RandomLevelSource) !void {
+        const dir = self.world_dir orelse return;
+
+        // Save level metadata
+        try save.saveLevelDat(self.allocator, dir, self.seed, self.world_time);
+
+        // Save each chunk
+        var it = self.chunk_map.iterator();
+        while (it.next()) |entry| {
+            const ch = entry.value_ptr;
+            try save.saveChunk(self.allocator, dir, ch.blocks, ch.skylight, ch.blocklight, ch.heightmap, ch.x, ch.z);
+        }
+        std.debug.print("Saved {d} chunks to {s}\n", .{ self.chunk_map.count(), dir });
+    }
+
+    /// Create a RandomLevelSource that loads chunks from disk when available,
+    /// falling back to procedural generation.
+    pub fn initFromDisk(allocator: std.mem.Allocator, world_dir: []const u8) !RandomLevelSource {
+        // Try to load level.dat for the seed
+        const seed: i64 = if (try save.loadLevelDat(allocator, world_dir)) |ld| blk: {
+            break :blk ld.seed;
+        } else 12345;
+
+        var self = try init(allocator, seed);
+        self.world_dir = try allocator.dupe(u8, world_dir);
+        return self;
+    }
+
+    pub fn deinitWithSave(self: *RandomLevelSource) void {
+        self.saveAllChunks() catch {};
+        if (self.world_dir) |dir| {
+            self.allocator.free(dir);
+        }
+        self.deinit();
+    }
+
     /// Get or generate a chunk at coordinates
     pub fn getChunk(self: *RandomLevelSource, x_offs: i32, z_offs: i32) !*LevelChunk {
         const hash = ChunkPos.hashCode(x_offs, z_offs);
         if (self.chunk_map.getPtr(hash)) |existing| return existing;
+
+        // Try loading from disk if we have a world directory
+        if (self.world_dir) |dir| {
+            if (try save.loadChunk(self.allocator, dir, x_offs, z_offs)) |loaded| {
+                const level_chunk = LevelChunk{
+                    .blocks = loaded.blocks,
+                    .skylight = loaded.skylight,
+                    .blocklight = loaded.blocklight,
+                    .heightmap = loaded.heightmap,
+                    .x = x_offs,
+                    .z = z_offs,
+                };
+                try self.chunk_map.put(hash, level_chunk);
+                return self.chunk_map.getPtr(hash).?;
+            }
+        }
 
         // Seed for this chunk position
         const chunk_seed: i64 = @as(i64, x_offs) * 341872712 + @as(i64, z_offs) * 132899541;

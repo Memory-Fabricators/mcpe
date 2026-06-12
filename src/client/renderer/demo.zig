@@ -47,8 +47,9 @@ pub fn main(init: std.process.Init) !void {
     defer context.deinit();
 
     // ---- Level source ----------------------------------------------------
-    var level_source = try renderer.RandomLevelSource.init(alloc, 12345);
-    defer level_source.deinit();
+    const world_dir = "data/worlds/default";
+    var level_source = try renderer.RandomLevelSource.initFromDisk(alloc, world_dir);
+    defer level_source.deinitWithSave();
 
     // ---- Level renderer --------------------------------------------------
     var lr = try renderer.LevelRenderer.init(alloc, &context, &level_source, 1, init.io);

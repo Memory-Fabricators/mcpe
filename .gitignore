@@ -10,3 +10,5 @@
 zig-out/
 .zig-cache/
 zig-pkg/
+*.spv
+/data/worlds

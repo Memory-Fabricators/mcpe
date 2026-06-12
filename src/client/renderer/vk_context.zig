@@ -1,10 +1,4 @@
-//! vk_context.zig
-//! Vulkan device/swapchain context – instance, physical device selection,
-//! logical device, swapchain, depth image, render pass, framebuffers.
-//!
-//! Mirrors what the C++ project's glInit() + LevelRenderer constructor set up,
-//! but in modern Vulkan.
-
+const config = @import("config");
 const std = @import("std");
 const vk = @import("vk_types.zig");
 const loader = @import("vk_loader.zig");
@@ -56,9 +50,6 @@ pub const VkContext = struct {
         alloc: std.mem.Allocator,
         window: *loader.SDL_Window,
     ) !VkContext {
-        // ---- 1. Loader bootstrap ----------------------------------------
-        if (!loader.SDL_Vulkan_LoadLibrary(null))
-            return error.SDLVulkanLoadFailed;
         try loader.initLoader();
 
         // ---- 2. Instance ------------------------------------------------
@@ -74,12 +65,11 @@ pub const VkContext = struct {
             .engineVersion = 1,
             .apiVersion = vkMakeVersion(1, 2, 0),
         };
-        const VALIDATION_LAYER = "VK_LAYER_KHRONOS_validation";
         const inst_info = vk.VkInstanceCreateInfo{
             .sType = 1,
             .pApplicationInfo = &app_info,
-            .enabledLayerCount = 1,
-            .ppEnabledLayerNames = &[_][*:0]const u8{VALIDATION_LAYER},
+            .enabledLayerCount = 0,
+            .ppEnabledLayerNames = null,
             .enabledExtensionCount = ext_count,
             .ppEnabledExtensionNames = @ptrCast(raw_exts),
         };
