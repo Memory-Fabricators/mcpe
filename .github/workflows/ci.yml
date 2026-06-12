@@ -21,6 +21,28 @@ jobs:
               with:
                   version: master
 
+            - name: Build SDL3 runtime
+              run: |
+                  git clone https://github.com/libsdl-org/SDL --depth=1
+                  cmake -B build-sdl -G Ninja -S SDL \
+                    -DCMAKE_BUILD_TYPE=Release \
+                    -DSDL_STATIC=OFF \
+                    -DSDL_SHARED=ON \
+                    -DSDL_AUDIO=OFF \
+                    -DSDL_JOYSTICK=OFF \
+                    -DSDL_HAPTIC=OFF \
+                    -DSDL_HIDAPI=OFF \
+                    -DSDL_CAMERA=OFF \
+                    -DSDL_SENSOR=OFF \
+                    -DSDL_DIALOG=OFF \
+                    -DSDL_TRAY=OFF \
+                    -DSDL_RENDER=OFF \
+                    -DSDL_GPU=OFF \
+                    -DSDL_VULKAN=ON \
+                    -DSDL_VIDEO=ON
+
+                  cmake --build build-sdl --target install
+
             - name: Verify Code Formatting
               run: zig fmt --check .
 
