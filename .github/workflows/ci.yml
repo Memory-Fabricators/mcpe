@@ -26,6 +26,7 @@ jobs:
                   git clone https://github.com/libsdl-org/SDL --depth=1
                   cmake -B build-sdl -G Ninja -S SDL \
                     -DCMAKE_BUILD_TYPE=Release \
+                    -DSDL_UNIX_CONSOLE_BUILD=ON \
                     -DSDL_STATIC=OFF \
                     -DSDL_SHARED=ON \
                     -DSDL_AUDIO=OFF \
