@@ -601,19 +601,32 @@ pub const RandomLevelSource = struct {
     }
 };
 
-/// A chunk of the world - holds block data
+/// A chunk of the world - holds block data and light levels
 pub const LevelChunk = struct {
     blocks: []u8,
+    skylight: chunk.DataLayer,
+    blocklight: chunk.DataLayer,
     heightmap: [256]i8,
     x: i32,
     z: i32,
 
     pub fn init(allocator: std.mem.Allocator, blocks: []u8, x: i32, z: i32) !LevelChunk {
-        _ = allocator;
         var hmap: [256]i8 = @splat(0);
         RandomLevelSource.recalcHeightmap(blocks, &hmap);
+
+        const block_count: usize = @intCast(chunk_block_count);
+        var sky = try chunk.DataLayer.init(allocator, block_count);
+        errdefer sky.deinit(allocator);
+        var blight = try chunk.DataLayer.init(allocator, block_count);
+        errdefer blight.deinit(allocator);
+
+        // Compute initial skylight for the full chunk
+        computeInitialSkylight(blocks, &sky, x, z);
+
         return .{
             .blocks = blocks,
+            .skylight = sky,
+            .blocklight = blight,
             .heightmap = hmap,
             .x = x,
             .z = z,
@@ -622,9 +635,48 @@ pub const LevelChunk = struct {
 
     pub fn deinit(self: *LevelChunk, allocator: std.mem.Allocator) void {
         allocator.free(self.blocks);
+        self.skylight.deinit(allocator);
+        self.blocklight.deinit(allocator);
         self.* = undefined;
     }
 };
+
+/// Compute initial skylight for each block column in a chunk.
+/// Scans top-down: blocks with direct sky access get skylight 15;
+/// below the first solid/light-blocking block, skylight is 0 (solid)
+/// or 1 (transparent).
+fn computeInitialSkylight(blocks: []u8, skylight: *chunk.DataLayer, _: i32, _: i32) void {
+    var x: i32 = 0;
+    while (x < 16) : (x += 1) {
+        var z: i32 = 0;
+        while (z < 16) : (z += 1) {
+            var hit_top: bool = false;
+            var y: i32 = 127;
+            while (y >= 0) : (y -= 1) {
+                const off = chunk.blockOffset(x, y, z);
+                const id = blocks[off];
+                if (!hit_top) {
+                    if (id == 0) {
+                        skylight.set(off, 15);
+                    } else {
+                        hit_top = true;
+                        if (!chunk.isBlockingLight(id)) {
+                            skylight.set(off, 15);
+                        } else {
+                            skylight.set(off, 15);
+                        }
+                    }
+                } else {
+                    if (!chunk.isBlockingLight(id)) {
+                        skylight.set(off, 1);
+                    } else {
+                        skylight.set(off, 0);
+                    }
+                }
+            }
+        }
+    }
+}
 
 // Helper for blockOffset in surface code
 fn blockOffset(x: i32, y: i32, z: i32) usize {

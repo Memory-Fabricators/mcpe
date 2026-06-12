@@ -42,7 +42,7 @@ jobs:
                     -DSDL_VULKAN=ON \
                     -DSDL_VIDEO=ON
 
-                  cmake --build build-sdl --target install
+                  sudo cmake --build build-sdl --target install
 
             - name: Verify Code Formatting
               run: zig fmt --check .

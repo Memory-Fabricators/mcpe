@@ -41,6 +41,8 @@ pub const CHUNK_SIZE: i32 = 16;
 ///   2 = alpha-blended (water)
 pub const NUM_LAYERS: usize = 3;
 
+pub const BlockFace = enum { up, down, north, south, east, west };
+
 /// Maximum dirty chunks rebuilt per frame for chunks within 32 m.
 pub const MAX_VISIBLE_REBUILDS_PER_FRAME: usize = 3;
 /// Maximum dirty chunks rebuilt per frame for off-screen chunks.
@@ -300,6 +302,8 @@ const RebuildResult = struct {
 
 const LocalChunkData = struct {
     blocks: [18 * 18 * 18]u8,
+    skylight: [18 * 18 * 18]u8,
+    blocklight: [18 * 18 * 18]u8,
 
     pub fn getBlock(self: *const LocalChunkData, lx: i32, ly: i32, lz: i32) u8 {
         const x_idx = lx + 1;
@@ -307,6 +311,22 @@ const LocalChunkData = struct {
         const z_idx = lz + 1;
         if (x_idx < 0 or x_idx >= 18 or y_idx < 0 or y_idx >= 18 or z_idx < 0 or z_idx >= 18) return 0;
         return self.blocks[@intCast((x_idx * 18 + z_idx) * 18 + y_idx)];
+    }
+
+    pub fn getSkyLight(self: *const LocalChunkData, lx: i32, ly: i32, lz: i32) u8 {
+        const x_idx = lx + 1;
+        const y_idx = ly + 1;
+        const z_idx = lz + 1;
+        if (x_idx < 0 or x_idx >= 18 or y_idx < 0 or y_idx >= 18 or z_idx < 0 or z_idx >= 18) return 15;
+        return self.skylight[@intCast((x_idx * 18 + z_idx) * 18 + y_idx)];
+    }
+
+    pub fn getBlockLight(self: *const LocalChunkData, lx: i32, ly: i32, lz: i32) u8 {
+        const x_idx = lx + 1;
+        const y_idx = ly + 1;
+        const z_idx = lz + 1;
+        if (x_idx < 0 or x_idx >= 18 or y_idx < 0 or y_idx >= 18 or z_idx < 0 or z_idx >= 18) return 0;
+        return self.blocklight[@intCast((x_idx * 18 + z_idx) * 18 + y_idx)];
     }
 };
 
@@ -384,6 +404,9 @@ pub const LevelRenderer = struct {
 
     /// Monotonically increasing tick counter.
     ticks: u32 = 0,
+
+    /// Day-light factor: 1.0 = noon, 0.0 = midnight. Start at full daylight.
+    day_light: f32 = 1.0,
 
     /// Player is mid-rebuild cycle (matches C++ noEntityRenderFrames)
     no_entity_frames: u32 = 2,
@@ -1337,7 +1360,6 @@ pub const LevelRenderer = struct {
     ) std.Io.Cancelable!void {
         // 1. Copy block data under lock
         var local_data: LocalChunkData = undefined;
-        var col_blocks: [3][3]?[]u8 = undefined;
         {
             self.level_mutex.lockUncancelable(io);
             defer self.level_mutex.unlock(io);
@@ -1345,42 +1367,70 @@ pub const LevelRenderer = struct {
             const cx = @divFloor(expected_x, 16);
             const cz = @divFloor(expected_z, 16);
 
+            const ColData = struct {
+                blocks: ?[]const u8,
+                skylight: chunk.DataLayer,
+                blocklight: chunk.DataLayer,
+                has: bool,
+            };
+            var col_data: [3][3]ColData = undefined;
+
             var dx: i32 = -1;
             while (dx <= 1) : (dx += 1) {
                 var dz: i32 = -1;
                 while (dz <= 1) : (dz += 1) {
                     const col = self.level_source.getChunk(cx + dx, cz + dz) catch null;
-                    col_blocks[@intCast(dx + 1)][@intCast(dz + 1)] = if (col) |c| c.blocks else null;
+                    if (col) |c| {
+                        col_data[@intCast(dx + 1)][@intCast(dz + 1)] = .{
+                            .blocks = c.blocks,
+                            .skylight = c.skylight,
+                            .blocklight = c.blocklight,
+                            .has = true,
+                        };
+                    } else {
+                        col_data[@intCast(dx + 1)][@intCast(dz + 1)] = .{
+                            .blocks = null,
+                            .skylight = undefined,
+                            .blocklight = undefined,
+                            .has = false,
+                        };
+                    }
                 }
             }
-        }
 
-        var lx: i32 = -1;
-        while (lx <= 16) : (lx += 1) {
-            const dx_idx: usize = if (lx == -1) 0 else if (lx == 16) 2 else 1;
-            const bx: i32 = if (lx == -1) 15 else if (lx == 16) 0 else lx;
+            var lx: i32 = -1;
+            while (lx <= 16) : (lx += 1) {
+                const dx_idx: usize = if (lx == -1) 0 else if (lx == 16) 2 else 1;
+                const bx: i32 = if (lx == -1) 15 else if (lx == 16) 0 else lx;
 
-            var lz: i32 = -1;
-            while (lz <= 16) : (lz += 1) {
-                const dz_idx: usize = if (lz == -1) 0 else if (lz == 16) 2 else 1;
-                const bz: i32 = if (lz == -1) 15 else if (lz == 16) 0 else lz;
+                var lz: i32 = -1;
+                while (lz <= 16) : (lz += 1) {
+                    const dz_idx: usize = if (lz == -1) 0 else if (lz == 16) 2 else 1;
+                    const bz: i32 = if (lz == -1) 15 else if (lz == 16) 0 else lz;
 
-                const blocks_opt = col_blocks[dx_idx][dz_idx];
+                    const cd = col_data[dx_idx][dz_idx];
 
-                var ly: i32 = -1;
-                while (ly <= 16) : (ly += 1) {
-                    const gy = expected_y + ly;
-                    const x_idx = lx + 1;
-                    const y_idx = ly + 1;
-                    const z_idx = lz + 1;
+                    var ly: i32 = -1;
+                    while (ly <= 16) : (ly += 1) {
+                        const gy = expected_y + ly;
+                        const x_idx = lx + 1;
+                        const y_idx = ly + 1;
+                        const z_idx = lz + 1;
+                        const li: usize = @intCast((x_idx * 18 + z_idx) * 18 + y_idx);
 
-                    var block_id: u8 = 0;
-                    if (gy >= 0 and gy < 128) {
-                        if (blocks_opt) |blocks| {
-                            block_id = blocks[chunk.blockOffset(bx, gy, bz)];
+                        var block_id: u8 = 0;
+                        var sky: u8 = 15;
+                        var blight: u8 = 0;
+                        if (gy >= 0 and gy < 128 and cd.has) {
+                            const off = chunk.blockOffset(bx, gy, bz);
+                            block_id = cd.blocks.?[off];
+                            sky = cd.skylight.get(off);
+                            blight = cd.blocklight.get(off);
                         }
+                        local_data.blocks[li] = block_id;
+                        local_data.skylight[li] = sky;
+                        local_data.blocklight[li] = blight;
                     }
-                    local_data.blocks[@intCast((x_idx * 18 + z_idx) * 18 + y_idx)] = block_id;
                 }
             }
         }
@@ -1425,115 +1475,127 @@ pub const LevelRenderer = struct {
 
                         // Up (Y+)
                         if (isFaceVisible(block_id, local_data.getBlock(bx, by + 1, bz))) {
-                            const col = getBlockColor(block_id, .up);
                             const tex_idx = getBlockTextureIndex(block_id, .up);
                             const tu0 = @as(f32, @floatFromInt(tex_idx % 16)) / 16.0;
                             const tv0 = @as(f32, @floatFromInt(tex_idx / 16)) / 16.0;
                             const tu1 = tu0 + 1.0 / 16.0;
                             const tv1 = tv0 + 1.0 / 16.0;
 
-                            tessy.colorF(col[0], col[1], col[2], 1.0);
+                            tessy.colorPacked(getVertexColor(block_id, .up, bx, by, bz, 0, &local_data, self.day_light));
                             tessy.tex(tu0, tv1);
                             tessy.vertex(fx, fy + 1.0, fz + 1.0);
+                            tessy.colorPacked(getVertexColor(block_id, .up, bx, by, bz, 1, &local_data, self.day_light));
                             tessy.tex(tu0, tv0);
                             tessy.vertex(fx, fy + 1.0, fz);
+                            tessy.colorPacked(getVertexColor(block_id, .up, bx, by, bz, 2, &local_data, self.day_light));
                             tessy.tex(tu1, tv0);
                             tessy.vertex(fx + 1.0, fy + 1.0, fz);
+                            tessy.colorPacked(getVertexColor(block_id, .up, bx, by, bz, 3, &local_data, self.day_light));
                             tessy.tex(tu1, tv1);
                             tessy.vertex(fx + 1.0, fy + 1.0, fz + 1.0);
                         }
                         // Down (Y-)
                         if (isFaceVisible(block_id, local_data.getBlock(bx, by - 1, bz))) {
-                            const col = getBlockColor(block_id, .down);
                             const tex_idx = getBlockTextureIndex(block_id, .down);
                             const tu0 = @as(f32, @floatFromInt(tex_idx % 16)) / 16.0;
                             const tv0 = @as(f32, @floatFromInt(tex_idx / 16)) / 16.0;
                             const tu1 = tu0 + 1.0 / 16.0;
                             const tv1 = tv0 + 1.0 / 16.0;
 
-                            tessy.colorF(col[0], col[1], col[2], 1.0);
+                            tessy.colorPacked(getVertexColor(block_id, .down, bx, by, bz, 0, &local_data, self.day_light));
                             tessy.tex(tu0, tv0);
                             tessy.vertex(fx, fy, fz);
+                            tessy.colorPacked(getVertexColor(block_id, .down, bx, by, bz, 1, &local_data, self.day_light));
                             tessy.tex(tu0, tv1);
                             tessy.vertex(fx, fy, fz + 1.0);
+                            tessy.colorPacked(getVertexColor(block_id, .down, bx, by, bz, 2, &local_data, self.day_light));
                             tessy.tex(tu1, tv1);
                             tessy.vertex(fx + 1.0, fy, fz + 1.0);
+                            tessy.colorPacked(getVertexColor(block_id, .down, bx, by, bz, 3, &local_data, self.day_light));
                             tessy.tex(tu1, tv0);
                             tessy.vertex(fx + 1.0, fy, fz);
                         }
                         // North (Z-)
                         if (isFaceVisible(block_id, local_data.getBlock(bx, by, bz - 1))) {
-                            const col = getBlockColor(block_id, .north);
                             const tex_idx = getBlockTextureIndex(block_id, .north);
                             const tu0 = @as(f32, @floatFromInt(tex_idx % 16)) / 16.0;
                             const tv0 = @as(f32, @floatFromInt(tex_idx / 16)) / 16.0;
                             const tu1 = tu0 + 1.0 / 16.0;
                             const tv1 = tv0 + 1.0 / 16.0;
 
-                            tessy.colorF(col[0], col[1], col[2], 1.0);
+                            tessy.colorPacked(getVertexColor(block_id, .north, bx, by, bz, 0, &local_data, self.day_light));
                             tessy.tex(tu0, tv1);
                             tessy.vertex(fx, fy, fz);
+                            tessy.colorPacked(getVertexColor(block_id, .north, bx, by, bz, 1, &local_data, self.day_light));
                             tessy.tex(tu1, tv1);
                             tessy.vertex(fx + 1.0, fy, fz);
+                            tessy.colorPacked(getVertexColor(block_id, .north, bx, by, bz, 2, &local_data, self.day_light));
                             tessy.tex(tu1, tv0);
                             tessy.vertex(fx + 1.0, fy + 1.0, fz);
+                            tessy.colorPacked(getVertexColor(block_id, .north, bx, by, bz, 3, &local_data, self.day_light));
                             tessy.tex(tu0, tv0);
                             tessy.vertex(fx, fy + 1.0, fz);
                         }
                         // South (Z+)
                         if (isFaceVisible(block_id, local_data.getBlock(bx, by, bz + 1))) {
-                            const col = getBlockColor(block_id, .south);
                             const tex_idx = getBlockTextureIndex(block_id, .south);
                             const tu0 = @as(f32, @floatFromInt(tex_idx % 16)) / 16.0;
                             const tv0 = @as(f32, @floatFromInt(tex_idx / 16)) / 16.0;
                             const tu1 = tu0 + 1.0 / 16.0;
                             const tv1 = tv0 + 1.0 / 16.0;
 
-                            tessy.colorF(col[0], col[1], col[2], 1.0);
+                            tessy.colorPacked(getVertexColor(block_id, .south, bx, by, bz, 0, &local_data, self.day_light));
                             tessy.tex(tu1, tv1);
                             tessy.vertex(fx + 1.0, fy, fz + 1.0);
+                            tessy.colorPacked(getVertexColor(block_id, .south, bx, by, bz, 1, &local_data, self.day_light));
                             tessy.tex(tu0, tv1);
                             tessy.vertex(fx, fy, fz + 1.0);
+                            tessy.colorPacked(getVertexColor(block_id, .south, bx, by, bz, 2, &local_data, self.day_light));
                             tessy.tex(tu0, tv0);
                             tessy.vertex(fx, fy + 1.0, fz + 1.0);
+                            tessy.colorPacked(getVertexColor(block_id, .south, bx, by, bz, 3, &local_data, self.day_light));
                             tessy.tex(tu1, tv0);
                             tessy.vertex(fx + 1.0, fy + 1.0, fz + 1.0);
                         }
                         // West (X-)
                         if (isFaceVisible(block_id, local_data.getBlock(bx - 1, by, bz))) {
-                            const col = getBlockColor(block_id, .west);
                             const tex_idx = getBlockTextureIndex(block_id, .west);
                             const tu0 = @as(f32, @floatFromInt(tex_idx % 16)) / 16.0;
                             const tv0 = @as(f32, @floatFromInt(tex_idx / 16)) / 16.0;
                             const tu1 = tu0 + 1.0 / 16.0;
                             const tv1 = tv0 + 1.0 / 16.0;
 
-                            tessy.colorF(col[0], col[1], col[2], 1.0);
+                            tessy.colorPacked(getVertexColor(block_id, .west, bx, by, bz, 0, &local_data, self.day_light));
                             tessy.tex(tu0, tv1);
                             tessy.vertex(fx, fy, fz);
+                            tessy.colorPacked(getVertexColor(block_id, .west, bx, by, bz, 1, &local_data, self.day_light));
                             tessy.tex(tu0, tv0);
                             tessy.vertex(fx, fy + 1.0, fz);
+                            tessy.colorPacked(getVertexColor(block_id, .west, bx, by, bz, 2, &local_data, self.day_light));
                             tessy.tex(tu1, tv0);
                             tessy.vertex(fx, fy + 1.0, fz + 1.0);
+                            tessy.colorPacked(getVertexColor(block_id, .west, bx, by, bz, 3, &local_data, self.day_light));
                             tessy.tex(tu1, tv1);
                             tessy.vertex(fx, fy, fz + 1.0);
                         }
                         // East (X+)
                         if (isFaceVisible(block_id, local_data.getBlock(bx + 1, by, bz))) {
-                            const col = getBlockColor(block_id, .east);
                             const tex_idx = getBlockTextureIndex(block_id, .east);
                             const tu0 = @as(f32, @floatFromInt(tex_idx % 16)) / 16.0;
                             const tv0 = @as(f32, @floatFromInt(tex_idx / 16)) / 16.0;
                             const tu1 = tu0 + 1.0 / 16.0;
                             const tv1 = tv0 + 1.0 / 16.0;
 
-                            tessy.colorF(col[0], col[1], col[2], 1.0);
+                            tessy.colorPacked(getVertexColor(block_id, .east, bx, by, bz, 0, &local_data, self.day_light));
                             tessy.tex(tu0, tv1);
                             tessy.vertex(fx + 1.0, fy, fz + 1.0);
+                            tessy.colorPacked(getVertexColor(block_id, .east, bx, by, bz, 1, &local_data, self.day_light));
                             tessy.tex(tu0, tv0);
                             tessy.vertex(fx + 1.0, fy + 1.0, fz + 1.0);
+                            tessy.colorPacked(getVertexColor(block_id, .east, bx, by, bz, 2, &local_data, self.day_light));
                             tessy.tex(tu1, tv0);
                             tessy.vertex(fx + 1.0, fy + 1.0, fz);
+                            tessy.colorPacked(getVertexColor(block_id, .east, bx, by, bz, 3, &local_data, self.day_light));
                             tessy.tex(tu1, tv1);
                             tessy.vertex(fx + 1.0, fy, fz);
                         }
@@ -1582,6 +1644,102 @@ fn uploadToBufferOffset(
     if (r != vk.VK_SUCCESS) return error.MapMemoryFailed;
     @memcpy(@as([*]u8, @ptrCast(mapped.?))[0..data.len], data);
     context.vf.vkUnmapMemory(context.device, buf_mem);
+}
+
+/// Compute per-vertex colour with smooth-lighting AO.
+/// Returns packed u32 ABGR (byte0=R, byte1=G, byte2=B, byte3=A).
+fn getVertexColor(
+    block_id: u8,
+    face: BlockFace,
+    bx: i32,
+    by: i32,
+    bz: i32,
+    vi: u2,
+    local: *const LocalChunkData,
+    day_light: f32,
+) u32 {
+    const col = getBlockColor(block_id, face);
+
+    // Occlusion offsets: for each (face, vi) we list 3 (dx, dy, dz) positions
+    // relative to the block being drawn.
+    const offsets: [3][3]i32 = switch (face) {
+        .up => switch (vi) {
+            0 => .{ .{ -1, 0, 0 }, .{ -1, 0, 1 }, .{ 0, 0, 1 } },
+            1 => .{ .{ -1, 0, -1 }, .{ 0, 0, -1 }, .{ -1, 0, 0 } },
+            2 => .{ .{ 0, 0, -1 }, .{ 1, 0, -1 }, .{ 1, 0, 0 } },
+            3 => .{ .{ 0, 0, 1 }, .{ 1, 0, 0 }, .{ 1, 0, 1 } },
+        },
+        .down => switch (vi) {
+            0 => .{ .{ -1, 0, -1 }, .{ 0, 0, -1 }, .{ -1, 0, 0 } },
+            1 => .{ .{ -1, 0, 0 }, .{ -1, 0, 1 }, .{ 0, 0, 1 } },
+            2 => .{ .{ 0, 0, 1 }, .{ 1, 0, 0 }, .{ 1, 0, 1 } },
+            3 => .{ .{ 0, 0, -1 }, .{ 1, 0, -1 }, .{ 1, 0, 0 } },
+        },
+        .north => switch (vi) {
+            0 => .{ .{ -1, 0, 0 }, .{ -1, -1, 0 }, .{ 0, -1, 0 } },
+            1 => .{ .{ 0, -1, 0 }, .{ 1, -1, 0 }, .{ 1, 0, 0 } },
+            2 => .{ .{ 0, 1, 0 }, .{ 1, 0, 0 }, .{ 1, 1, 0 } },
+            3 => .{ .{ -1, 0, 0 }, .{ -1, 1, 0 }, .{ 0, 1, 0 } },
+        },
+        .south => switch (vi) {
+            0 => .{ .{ 0, -1, 0 }, .{ 1, -1, 0 }, .{ 1, 0, 0 } },
+            1 => .{ .{ -1, -1, 0 }, .{ 0, -1, 0 }, .{ -1, 0, 0 } },
+            2 => .{ .{ -1, 0, 0 }, .{ -1, 1, 0 }, .{ 0, 1, 0 } },
+            3 => .{ .{ 0, 1, 0 }, .{ 1, 0, 0 }, .{ 1, 1, 0 } },
+        },
+        .west => switch (vi) {
+            0 => .{ .{ 0, -1, -1 }, .{ 0, 0, -1 }, .{ 0, -1, 0 } },
+            1 => .{ .{ 0, 0, -1 }, .{ 0, 1, -1 }, .{ 0, 1, 0 } },
+            2 => .{ .{ 0, 1, 0 }, .{ 0, 0, 1 }, .{ 0, 1, 1 } },
+            3 => .{ .{ 0, -1, 0 }, .{ 0, -1, 1 }, .{ 0, 0, 1 } },
+        },
+        .east => switch (vi) {
+            0 => .{ .{ 0, -1, 0 }, .{ 0, -1, 1 }, .{ 0, 0, 1 } },
+            1 => .{ .{ 0, 0, 1 }, .{ 0, 1, 0 }, .{ 0, 1, 1 } },
+            2 => .{ .{ 0, 0, -1 }, .{ 0, 1, -1 }, .{ 0, 1, 0 } },
+            3 => .{ .{ 0, -1, -1 }, .{ 0, 0, -1 }, .{ 0, -1, 0 } },
+        },
+    };
+
+    // Count how many of the 3 corner blocks are solid + light-blocking.
+    var occluding: u32 = 0;
+    var max_sky: u8 = local.getSkyLight(bx, by, bz);
+    var max_blight: u8 = local.getBlockLight(bx, by, bz);
+    for (offsets) |off| {
+        const nx = bx + off[0];
+        const ny = by + off[1];
+        const nz = bz + off[2];
+        const nid = local.getBlock(nx, ny, nz);
+        if (nid != 0 and chunk.isBlockingLight(nid)) {
+            occluding += 1;
+        }
+        max_sky = @max(max_sky, local.getSkyLight(nx, ny, nz));
+        max_blight = @max(max_blight, local.getBlockLight(nx, ny, nz));
+    }
+
+    // AO factor: soften the darkening so corners aren't too harsh.
+    const ao: f32 = switch (occluding) {
+        0 => 1.0,
+        1 => 0.85,
+        2 => 0.70,
+        3 => 0.55,
+        else => 0.55,
+    };
+
+    // Skylight scaled by time-of-day; block light is always at full strength.
+    const effective_sky: f32 = @as(f32, @floatFromInt(max_sky)) * day_light;
+    const effective_blight: f32 = @floatFromInt(max_blight);
+    const total_light: f32 = @min((effective_sky + effective_blight) / 15.0, 1.0);
+
+    // Ambient floor: even in total darkness, there is always some visibility.
+    const ambient: f32 = 0.12;
+    const factor: f32 = @max(total_light, ambient) * ao;
+
+    const r: u8 = @intFromFloat(@min(col[0] * factor * 255.0, 255.0));
+    const g: u8 = @intFromFloat(@min(col[1] * factor * 255.0, 255.0));
+    const b: u8 = @intFromFloat(@min(col[2] * factor * 255.0, 255.0));
+
+    return (@as(u32, r)) | (@as(u32, g) << 8) | (@as(u32, b) << 16) | (0xFF << 24);
 }
 
 // ---------------------------------------------------------------------------
@@ -1776,7 +1934,7 @@ fn isDecor(id: u8) bool {
         id == BlockId.reeds;
 }
 
-fn getBlockColor(block_id: u8, face: enum { up, down, north, south, east, west }) [3]f32 {
+fn getBlockColor(block_id: u8, face: BlockFace) [3]f32 {
     const base_color: [3]f32 = switch (block_id) {
         BlockId.grass => if (face == .up)
             [3]f32{ 0.35, 0.65, 0.25 } // grass top
@@ -1814,7 +1972,7 @@ fn getBlockColor(block_id: u8, face: enum { up, down, north, south, east, west }
     return [3]f32{ base_color[0] * factor, base_color[1] * factor, base_color[2] * factor };
 }
 
-fn getBlockTextureIndex(block_id: u8, face: enum { up, down, north, south, east, west }) u8 {
+fn getBlockTextureIndex(block_id: u8, face: BlockFace) u8 {
     return switch (block_id) {
         BlockId.grass => switch (face) {
             .up => 0,

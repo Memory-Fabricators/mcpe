@@ -73,3 +73,10 @@ pub fn blockOffset(x: i32, y: i32, z: i32) usize {
     const uz: u32 = @bitCast(z);
     return @intCast((ux << 11) | (uz << 7) | uy);
 }
+
+pub fn isBlockingLight(id: u8) bool {
+    return switch (id) {
+        0, 8, 9, 20, 18, 6, 31, 32, 37, 38, 39, 40, 83, 200, 30, 78 => false,
+        else => true,
+    };
+}
