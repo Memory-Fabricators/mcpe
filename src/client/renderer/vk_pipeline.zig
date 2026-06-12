@@ -210,7 +210,7 @@ fn createTerrainPipeline(
     const raster = vk.VkPipelineRasterizationStateCreateInfo{
         .sType = 23,
         .polygonMode = vk.VK_POLYGON_MODE_FILL,
-        .cullMode = vk.VK_CULL_MODE_NONE,
+        .cullMode = vk.VK_CULL_MODE_BACK_BIT,
         .frontFace = vk.VK_FRONT_FACE_COUNTER_CLOCKWISE,
         .lineWidth = 1.0,
     };
@@ -440,7 +440,7 @@ fn createCloudPipeline(
     const raster = vk.VkPipelineRasterizationStateCreateInfo{
         .sType = 23,
         .polygonMode = vk.VK_POLYGON_MODE_FILL,
-        .cullMode = vk.VK_CULL_MODE_NONE,
+        .cullMode = vk.VK_CULL_MODE_BACK_BIT,
         .frontFace = vk.VK_FRONT_FACE_COUNTER_CLOCKWISE,
         .lineWidth = 1.0,
     };

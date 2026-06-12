@@ -18,10 +18,8 @@ const vk = renderer.vk;
 // ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
-pub fn main() !void {
-    var gpa = std.heap.DebugAllocator(.{}).init;
-    defer _ = gpa.deinit();
-    const alloc = gpa.allocator();
+pub fn main(init: std.process.Init) !void {
+    const alloc = init.gpa;
 
     // ---- SDL3 init -------------------------------------------------------
     if (!loader.SDL_Init(loader.SDL_INIT_VIDEO)) {
@@ -53,7 +51,7 @@ pub fn main() !void {
     defer level_source.deinit();
 
     // ---- Level renderer --------------------------------------------------
-    var lr = try renderer.LevelRenderer.init(alloc, &context, &level_source, 1);
+    var lr = try renderer.LevelRenderer.init(alloc, &context, &level_source, 1, init.io);
     defer lr.deinit();
 
     // ---- Pipeline warm-up (DISABLED for debug) ---------------------------
@@ -152,7 +150,9 @@ pub fn main() !void {
         }
         if (keys[loader.SDL_SCANCODE_SPACE]) cam_y += SPEED;
         if (keys[loader.SDL_SCANCODE_LSHIFT]) cam_y -= SPEED;
-        if (keys[loader.SDL_SCANCODE_ESCAPE]) break;
+        if (keys[loader.SDL_SCANCODE_ESCAPE]) {
+            _ = loader.SDL_SetWindowRelativeMouseMode(window, false);
+        }
 
         var pw: c_int = 1280;
         var ph: c_int = 720;

@@ -46,8 +46,8 @@ pub const MAX_VISIBLE_REBUILDS_PER_FRAME: usize = 3;
 /// Maximum dirty chunks rebuilt per frame for off-screen chunks.
 pub const MAX_INVISIBLE_REBUILDS_PER_FRAME: usize = 1;
 
-/// Large per-chunk vertex buffer size.  16 MiB covers the worst-case chunk.
-const CHUNK_VBUF_BYTES: vk.VkDeviceSize = 16 * 1024 * 1024;
+/// Shared chunk vertex buffer arena size (64 MiB).
+const CHUNK_ARENA_BYTES: vk.VkDeviceSize = 64 * 1024 * 1024;
 
 /// Sky grid parameters (mirror C++ generateSky)
 const SKY_QUAD_SIZE: f32 = 128.0;
@@ -56,6 +56,162 @@ const SKY_Y_OFFSET: f32 = 16.0; // y of the sky plane above camera
 /// Cloud grid parameters (mirror C++ renderClouds)
 const CLOUD_SEG: f32 = 32.0;
 const CLOUD_DIVS: i32 = 8; // 256 / 32 = 8
+
+pub const VulkanBufferPool = struct {
+    pub const Allocation = struct {
+        buffer: vk.VkBuffer,
+        memory: vk.VkDeviceMemory,
+        offset: vk.VkDeviceSize,
+        size: vk.VkDeviceSize,
+        arena_idx: usize,
+    };
+
+    const Block = struct {
+        offset: vk.VkDeviceSize,
+        size: vk.VkDeviceSize,
+        free: bool,
+    };
+
+    const Arena = struct {
+        buffer: vk.VkBuffer,
+        memory: vk.VkDeviceMemory,
+        blocks: std.ArrayList(Block),
+        size: vk.VkDeviceSize,
+    };
+
+    context: *ctx.VkContext,
+    arenas: std.ArrayList(Arena),
+    arena_size: vk.VkDeviceSize,
+    allocator: std.mem.Allocator,
+
+    pub fn init(allocator: std.mem.Allocator, context: *ctx.VkContext, arena_size: vk.VkDeviceSize) VulkanBufferPool {
+        return .{
+            .context = context,
+            .arenas = .empty,
+            .arena_size = arena_size,
+            .allocator = allocator,
+        };
+    }
+
+    pub fn deinit(self: *VulkanBufferPool) void {
+        for (self.arenas.items) |*arena| {
+            self.context.vf.vkDestroyBuffer(self.context.device, arena.buffer, null);
+            self.context.vf.vkFreeMemory(self.context.device, arena.memory, null);
+            arena.blocks.deinit(self.allocator);
+        }
+        self.arenas.deinit(self.allocator);
+    }
+
+    fn createArena(self: *VulkanBufferPool, size: vk.VkDeviceSize) !Arena {
+        var buffer: vk.VkBuffer = 0;
+        var memory: vk.VkDeviceMemory = 0;
+        try self.context.createBuffer(
+            size,
+            vk.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+            vk.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | vk.VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            &buffer,
+            &memory,
+        );
+
+        var blocks = std.ArrayList(Block).empty;
+        try blocks.append(self.allocator, .{
+            .offset = 0,
+            .size = size,
+            .free = true,
+        });
+
+        return Arena{
+            .buffer = buffer,
+            .memory = memory,
+            .blocks = blocks,
+            .size = size,
+        };
+    }
+
+    pub fn allocate(self: *VulkanBufferPool, size: vk.VkDeviceSize, alignment: vk.VkDeviceSize) !Allocation {
+        if (size == 0) return error.InvalidAllocationSize;
+        const effective_alignment: vk.VkDeviceSize = if (alignment == 0) 1 else alignment;
+        const aligned_size = (size + effective_alignment - 1) & ~(effective_alignment - 1);
+
+        for (self.arenas.items, 0..) |*arena, arena_idx| {
+            for (0..arena.blocks.items.len) |block_idx| {
+                const block = arena.blocks.items[block_idx];
+                if (!block.free or block.size < aligned_size) continue;
+
+                const original_size = block.size;
+                arena.blocks.items[block_idx].free = false;
+
+                if (original_size - aligned_size >= 256) {
+                    arena.blocks.items[block_idx].size = aligned_size;
+                    const new_block = Block{
+                        .offset = block.offset + aligned_size,
+                        .size = original_size - aligned_size,
+                        .free = true,
+                    };
+                    try arena.blocks.insert(self.allocator, block_idx + 1, new_block);
+                }
+
+                return Allocation{
+                    .buffer = arena.buffer,
+                    .memory = arena.memory,
+                    .offset = arena.blocks.items[block_idx].offset,
+                    .size = arena.blocks.items[block_idx].size,
+                    .arena_idx = arena_idx,
+                };
+            }
+        }
+
+        const needed_size = @max(self.arena_size, aligned_size);
+        const new_arena = try self.createArena(needed_size);
+        try self.arenas.append(self.allocator, new_arena);
+
+        const arena_idx = self.arenas.items.len - 1;
+        const arena = &self.arenas.items[arena_idx];
+        arena.blocks.items[0].free = false;
+
+        const original_size = arena.blocks.items[0].size;
+        if (original_size - aligned_size >= 256) {
+            arena.blocks.items[0].size = aligned_size;
+            const new_block = Block{
+                .offset = aligned_size,
+                .size = original_size - aligned_size,
+                .free = true,
+            };
+            try arena.blocks.insert(self.allocator, 1, new_block);
+        }
+
+        return Allocation{
+            .buffer = arena.buffer,
+            .memory = arena.memory,
+            .offset = arena.blocks.items[0].offset,
+            .size = arena.blocks.items[0].size,
+            .arena_idx = arena_idx,
+        };
+    }
+
+    pub fn free(self: *VulkanBufferPool, alloc: Allocation) void {
+        if (alloc.arena_idx >= self.arenas.items.len) return;
+        const arena = &self.arenas.items[alloc.arena_idx];
+
+        for (arena.blocks.items) |*block| {
+            if (block.offset == alloc.offset) {
+                block.free = true;
+                break;
+            }
+        }
+
+        if (arena.blocks.items.len < 2) return;
+        var i: usize = 0;
+        while (i + 1 < arena.blocks.items.len) {
+            if (arena.blocks.items[i].free and arena.blocks.items[i + 1].free) {
+                arena.blocks.items[i].size += arena.blocks.items[i + 1].size;
+                _ = arena.blocks.orderedRemove(i + 1);
+            } else {
+                i += 1;
+            }
+        }
+    }
+};
 
 // ---------------------------------------------------------------------------
 // UBO layout (must match terrain.vert / sky.vert / clouds.vert)
@@ -80,7 +236,8 @@ const CloudColorData = extern struct {
 // ---------------------------------------------------------------------------
 
 pub const RenderChunk = struct {
-    vbuf: gpu.GpuBuffer,
+    vbuf_alloc: ?VulkanBufferPool.Allocation = null,
+    vertex_count: u32 = 0,
     dirty: bool = true,
     empty: bool = true,
 
@@ -106,6 +263,7 @@ pub const ChunkSlot = struct {
     sky_lit: bool = false,
     dirty: bool = true,
     id: u32 = 0,
+    rebuilding: bool = false,
 
     /// Distance² to player for sorting.
     pub fn distSqr(self: *const ChunkSlot, px: f32, py: f32, pz: f32) f32 {
@@ -130,6 +288,28 @@ pub const ChunkSlot = struct {
     }
 };
 
+const RebuildResult = struct {
+    slot_idx: usize,
+    expected_x: i32,
+    expected_y: i32,
+    expected_z: i32,
+    layers: [NUM_LAYERS]struct {
+        verts: []const tss.Vertex,
+    },
+};
+
+const LocalChunkData = struct {
+    blocks: [18 * 18 * 18]u8,
+
+    pub fn getBlock(self: *const LocalChunkData, lx: i32, ly: i32, lz: i32) u8 {
+        const x_idx = lx + 1;
+        const y_idx = ly + 1;
+        const z_idx = lz + 1;
+        if (x_idx < 0 or x_idx >= 18 or y_idx < 0 or y_idx >= 18 or z_idx < 0 or z_idx >= 18) return 0;
+        return self.blocks[@intCast((x_idx * 18 + z_idx) * 18 + y_idx)];
+    }
+};
+
 // ---------------------------------------------------------------------------
 // SkyVertex – position-only
 // ---------------------------------------------------------------------------
@@ -150,13 +330,20 @@ pub const LevelRenderer = struct {
     pipelines: pip.Pipelines,
     level_source: *rls.RandomLevelSource,
 
+    io: std.Io,
+    level_mutex: std.Io.Mutex = std.Io.Mutex.init,
+    rebuild_group: std.Io.Group = .init,
+    completed_queue: std.Io.Queue(RebuildResult),
+    completed_buffer: []RebuildResult,
+    active_rebuilds: usize = 0,
+
     // ---- Chunk grid (mirrors C++ xChunks/yChunks/zChunks / chunks[] ) ---
     x_chunks: i32 = 0,
     y_chunks: i32 = 0,
     z_chunks: i32 = 0,
     chunks: []ChunkSlot,
     sorted_indices: []usize, // indices into chunks[], sorted by distance
-    dirty_indices: std.ArrayListUnmanaged(usize),
+    buffer_pool: VulkanBufferPool,
 
     // ---- Player camera position (interpolated) ---
     cam_x: f32 = 0,
@@ -210,7 +397,12 @@ pub const LevelRenderer = struct {
         context: *ctx.VkContext,
         level_source: *rls.RandomLevelSource,
         view_distance: u32,
+        io: std.Io,
     ) !LevelRenderer {
+        const completed_buffer = try alloc.alloc(RebuildResult, 256);
+        errdefer alloc.free(completed_buffer);
+        const completed_queue = std.Io.Queue(RebuildResult).init(completed_buffer);
+
         const pipelines = try pip.createAll(
             context.vf,
             context.device,
@@ -230,8 +422,7 @@ pub const LevelRenderer = struct {
 
         const chunks = try alloc.alloc(ChunkSlot, total);
         const sorted = try alloc.alloc(usize, total);
-        var dirty = std.ArrayListUnmanaged(usize).empty;
-        try dirty.ensureTotalCapacity(alloc, total);
+        const buffer_pool = VulkanBufferPool.init(alloc, context, CHUNK_ARENA_BYTES);
 
         // Initialize chunk slots using linearIdx
         {
@@ -252,8 +443,6 @@ pub const LevelRenderer = struct {
                     }
                 }
             }
-            dirty.clearRetainingCapacity();
-            for (0..total) |i| dirty.appendAssumeCapacity(i);
         }
 
         // Allocate per-chunk VBOs for each layer
@@ -515,12 +704,15 @@ pub const LevelRenderer = struct {
             .context = context,
             .pipelines = pipelines,
             .level_source = level_source,
+            .io = io,
+            .completed_buffer = completed_buffer,
+            .completed_queue = completed_queue,
             .x_chunks = xc,
             .y_chunks = yc,
             .z_chunks = zc,
             .chunks = chunks,
             .sorted_indices = sorted,
-            .dirty_indices = dirty,
+            .buffer_pool = buffer_pool,
             .ubo_buf = ubo_buf,
             .sky_vbuf = sky_vbuf,
             .sky_vertex_count = sky_vcount,
@@ -542,6 +734,22 @@ pub const LevelRenderer = struct {
     }
 
     pub fn deinit(self: *LevelRenderer) void {
+        self.completed_queue.close(self.io);
+        self.rebuild_group.cancel(self.io);
+        _ = self.rebuild_group.await(self.io) catch {};
+
+        var completed_rebuilds: [32]RebuildResult = undefined;
+        while (true) {
+            const count = self.completed_queue.get(self.io, &completed_rebuilds, 0) catch 0;
+            if (count == 0) break;
+            for (completed_rebuilds[0..count]) |res| {
+                for (res.layers) |l| {
+                    if (l.verts.len > 0) self.alloc.free(l.verts);
+                }
+            }
+        }
+        self.alloc.free(self.completed_buffer);
+
         _ = self.context.vf.vkDeviceWaitIdle(self.context.device);
 
         self.context.vf.vkDestroyDescriptorPool(self.context.device, self.desc_pool, null);
@@ -562,15 +770,10 @@ pub const LevelRenderer = struct {
         self.sky_vbuf.deinit(self.context.vf, self.context.device);
         self.cloud_vbuf.deinit(self.context.vf, self.context.device);
 
-        for (self.chunks) |*slot| {
-            for (&slot.layers) |*layer| {
-                layer.vbuf.deinit(self.context.vf, self.context.device);
-            }
-        }
+        self.buffer_pool.deinit();
 
         self.alloc.free(self.chunks);
         self.alloc.free(self.sorted_indices);
-        self.dirty_indices.deinit(self.alloc);
 
         pip.destroyAll(self.context.vf, self.context.device, &self.pipelines);
     }
@@ -615,7 +818,6 @@ pub const LevelRenderer = struct {
                     const slot = &self.chunks[idx];
                     if (!slot.dirty) {
                         slot.setDirty();
-                        self.dirty_indices.append(self.alloc, idx) catch {};
                     }
                 }
             }
@@ -627,14 +829,6 @@ pub const LevelRenderer = struct {
     // -----------------------------------------------------------------------
 
     pub fn updateDirtyChunks(self: *LevelRenderer, cam_x: f32, cam_y: f32, cam_z: f32, force: bool) bool {
-        // Sort dirty list closest-first
-        std.mem.sort(usize, self.dirty_indices.items, self, struct {
-            fn lt(lr: *LevelRenderer, a: usize, b: usize) bool {
-                const da = lr.chunks[a].distSqr(lr.cam_x, lr.cam_y, lr.cam_z);
-                const db = lr.chunks[b].distSqr(lr.cam_x, lr.cam_y, lr.cam_z);
-                return da < db;
-            }
-        }.lt);
         _ = cam_x;
         _ = cam_y;
         _ = cam_z;
@@ -642,45 +836,57 @@ pub const LevelRenderer = struct {
         const close_radius_sq: f32 = 32 * 32;
         var built_visible: usize = 0;
         var built_hidden: usize = 0;
-        var new_dirty = std.ArrayListUnmanaged(usize).empty;
-        defer new_dirty.deinit(self.alloc);
+        var all_clean = true;
 
-        for (self.dirty_indices.items) |idx| {
+        for (self.sorted_indices) |idx| {
             const slot = &self.chunks[idx];
+            if (!slot.dirty) continue;
+
+            if (slot.rebuilding) {
+                all_clean = false;
+                continue;
+            }
+
             const d = slot.distSqr(self.cam_x, self.cam_y, self.cam_z);
 
             if (!force) {
                 if (d > close_radius_sq) {
                     if (slot.visible) {
                         if (built_visible >= MAX_VISIBLE_REBUILDS_PER_FRAME) {
-                            new_dirty.append(self.alloc, idx) catch {};
+                            all_clean = false;
                             continue;
                         }
                         built_visible += 1;
                     } else {
                         if (built_hidden >= MAX_INVISIBLE_REBUILDS_PER_FRAME) {
-                            new_dirty.append(self.alloc, idx) catch {};
+                            all_clean = false;
                             continue;
                         }
                         built_hidden += 1;
                     }
                 }
             } else if (!slot.visible) {
-                new_dirty.append(self.alloc, idx) catch {};
+                all_clean = false;
                 continue;
             }
 
-            // Rebuild all layers
-            self.rebuildChunk(idx) catch |err| {
-                std.debug.print("rebuildChunk failed at slot idx {d}: {}\n", .{ idx, err });
+            if (self.active_rebuilds >= 16) {
+                all_clean = false;
+                continue;
+            }
+
+            slot.rebuilding = true;
+            self.active_rebuilds += 1;
+
+            self.rebuild_group.concurrent(self.io, backgroundRebuildTask, .{ self, idx, slot.x, slot.y, slot.z, self.io }) catch |err| {
+                std.debug.print("Failed to spawn rebuild task for slot {d}: {}\n", .{ idx, err });
+                slot.rebuilding = false;
+                self.active_rebuilds -= 1;
+                all_clean = false;
             };
-            slot.setClean();
         }
 
-        self.dirty_indices.clearRetainingCapacity();
-        self.dirty_indices.appendSlice(self.alloc, new_dirty.items) catch {};
-
-        return self.dirty_indices.items.len == 0;
+        return all_clean;
     }
 
     // -----------------------------------------------------------------------
@@ -728,7 +934,6 @@ pub const LevelRenderer = struct {
                     slot.z = zz;
                     if (!was_dirty) {
                         slot.setDirty();
-                        self.dirty_indices.append(self.alloc, flat) catch {};
                     }
                 }
             }
@@ -791,11 +996,12 @@ pub const LevelRenderer = struct {
             const slot = &self.chunks[idx];
             if (!slot.visible) continue;
             const chunk_layer = &slot.layers[layer];
-            if (chunk_layer.empty or chunk_layer.vbuf.vertex_count == 0) continue;
+            if (chunk_layer.empty or chunk_layer.vertex_count == 0 or chunk_layer.vbuf_alloc == null) continue;
 
-            const offsets = [_]vk.VkDeviceSize{0};
-            self.context.vf.vkCmdBindVertexBuffers(cmd, 0, 1, &[_]vk.VkBuffer{chunk_layer.vbuf.buf}, &offsets);
-            self.context.vf.vkCmdDraw(cmd, chunk_layer.vbuf.vertex_count, 1, 0, 0);
+            const alloc_info = chunk_layer.vbuf_alloc.?;
+            const offsets = [_]vk.VkDeviceSize{alloc_info.offset};
+            self.context.vf.vkCmdBindVertexBuffers(cmd, 0, 1, &[_]vk.VkBuffer{alloc_info.buffer}, &offsets);
+            self.context.vf.vkCmdDraw(cmd, chunk_layer.vertex_count, 1, 0, 0);
         }
     }
 
@@ -988,6 +1194,63 @@ pub const LevelRenderer = struct {
         // Update a few dirty chunks
         _ = self.updateDirtyChunks(player_x, player_y, player_z, false);
 
+        // Poll completed rebuild tasks from queue (non-blocking)
+        var completed_rebuilds: [32]RebuildResult = undefined;
+        while (true) {
+            const count = self.completed_queue.get(self.io, &completed_rebuilds, 0) catch 0;
+            if (count == 0) break;
+
+            for (completed_rebuilds[0..count]) |res| {
+                self.active_rebuilds -= 1;
+                const slot = &self.chunks[res.slot_idx];
+
+                if (slot.x != res.expected_x or slot.y != res.expected_y or slot.z != res.expected_z) {
+                    for (res.layers) |l| {
+                        if (l.verts.len > 0) self.alloc.free(l.verts);
+                    }
+                    slot.setDirty();
+                    slot.rebuilding = false;
+                    continue;
+                }
+
+                for (res.layers, 0..) |res_layer, li| {
+                    const layer = &slot.layers[li];
+                    const verts = res_layer.verts;
+                    if (verts.len > 0) {
+                        const needed_bytes: vk.VkDeviceSize = @intCast(verts.len * @sizeOf(tss.Vertex));
+
+                        if (layer.vbuf_alloc == null or layer.vbuf_alloc.?.size < needed_bytes) {
+                            if (layer.vbuf_alloc) |alloc_info| {
+                                self.buffer_pool.free(alloc_info);
+                            }
+                            layer.vbuf_alloc = try self.buffer_pool.allocate(needed_bytes, 64);
+                        }
+
+                        try uploadToBufferOffset(
+                            self.context,
+                            layer.vbuf_alloc.?.memory,
+                            layer.vbuf_alloc.?.offset,
+                            std.mem.sliceAsBytes(verts),
+                        );
+                        layer.vertex_count = @intCast(verts.len);
+                        layer.dirty = false;
+                        layer.empty = false;
+                        self.alloc.free(verts);
+                    } else {
+                        if (layer.vbuf_alloc) |alloc_info| {
+                            self.buffer_pool.free(alloc_info);
+                            layer.vbuf_alloc = null;
+                        }
+                        layer.vertex_count = 0;
+                        layer.empty = true;
+                        layer.dirty = false;
+                    }
+                }
+                slot.rebuilding = false;
+                slot.setClean();
+            }
+        }
+
         // Update camera position used by chunk sorting and UBO offset
         self.cam_x = player_x;
         self.cam_y = player_y;
@@ -1064,185 +1327,237 @@ pub const LevelRenderer = struct {
         _ = frame;
     }
 
-    pub fn rebuildChunk(self: *LevelRenderer, slot_idx: usize) !void {
-        const slot = &self.chunks[slot_idx];
+    fn backgroundRebuildTask(
+        self: *LevelRenderer,
+        slot_idx: usize,
+        expected_x: i32,
+        expected_y: i32,
+        expected_z: i32,
+        io: std.Io,
+    ) std.Io.Cancelable!void {
+        // 1. Copy block data under lock
+        var local_data: LocalChunkData = undefined;
+        var col_blocks: [3][3]?[]u8 = undefined;
+        {
+            self.level_mutex.lockUncancelable(io);
+            defer self.level_mutex.unlock(io);
 
-        var tessy_opaque = try tss.Tesselator.init(self.alloc);
-        defer tessy_opaque.deinit();
-        var tessy_alpha = try tss.Tesselator.init(self.alloc);
-        defer tessy_alpha.deinit();
-        var tessy_blend = try tss.Tesselator.init(self.alloc);
-        defer tessy_blend.deinit();
+            const cx = @divFloor(expected_x, 16);
+            const cz = @divFloor(expected_z, 16);
 
-        tessy_opaque.beginMode(.quads);
-        tessy_alpha.beginMode(.quads);
-        tessy_blend.beginMode(.quads);
-
-        var bx: i32 = 0;
-        while (bx < 16) : (bx += 1) {
-            var bz: i32 = 0;
-            while (bz < 16) : (bz += 1) {
-                var by: i32 = 0;
-                while (by < 16) : (by += 1) {
-                    const gx = slot.x + bx;
-                    const gy = slot.y + by;
-                    const gz = slot.z + bz;
-
-                    const block_id = self.getBlock(gx, gy, gz);
-                    if (block_id == 0) continue; // air
-
-                    const layer = getBlockLayer(block_id) orelse continue;
-                    const tess = switch (layer) {
-                        0 => &tessy_opaque,
-                        1 => &tessy_alpha,
-                        2 => &tessy_blend,
-                        else => unreachable,
-                    };
-
-                    const fx = @as(f32, @floatFromInt(bx)) + @as(f32, @floatFromInt(slot.x));
-                    const fy = @as(f32, @floatFromInt(by)) + @as(f32, @floatFromInt(slot.y));
-                    const fz = @as(f32, @floatFromInt(bz)) + @as(f32, @floatFromInt(slot.z));
-
-                    // Up (Y+)
-                    if (isFaceVisible(block_id, self.getBlock(gx, gy + 1, gz))) {
-                        const col = getBlockColor(block_id, .up);
-                        const tex_idx = getBlockTextureIndex(block_id, .up);
-                        const tu0 = @as(f32, @floatFromInt(tex_idx % 16)) / 16.0;
-                        const tv0 = @as(f32, @floatFromInt(tex_idx / 16)) / 16.0;
-                        const tu1 = tu0 + 1.0 / 16.0;
-                        const tv1 = tv0 + 1.0 / 16.0;
-
-                        tess.colorF(col[0], col[1], col[2], 1.0);
-                        tess.tex(tu0, tv0);
-                        tess.vertex(fx, fy + 1.0, fz);
-                        tess.tex(tu0, tv1);
-                        tess.vertex(fx, fy + 1.0, fz + 1.0);
-                        tess.tex(tu1, tv1);
-                        tess.vertex(fx + 1.0, fy + 1.0, fz + 1.0);
-                        tess.tex(tu1, tv0);
-                        tess.vertex(fx + 1.0, fy + 1.0, fz);
-                    }
-                    // Down (Y-)
-                    if (isFaceVisible(block_id, self.getBlock(gx, gy - 1, gz))) {
-                        const col = getBlockColor(block_id, .down);
-                        const tex_idx = getBlockTextureIndex(block_id, .down);
-                        const tu0 = @as(f32, @floatFromInt(tex_idx % 16)) / 16.0;
-                        const tv0 = @as(f32, @floatFromInt(tex_idx / 16)) / 16.0;
-                        const tu1 = tu0 + 1.0 / 16.0;
-                        const tv1 = tv0 + 1.0 / 16.0;
-
-                        tess.colorF(col[0], col[1], col[2], 1.0);
-                        tess.tex(tu0, tv0);
-                        tess.vertex(fx, fy, fz);
-                        tess.tex(tu1, tv0);
-                        tess.vertex(fx + 1.0, fy, fz);
-                        tess.tex(tu1, tv1);
-                        tess.vertex(fx + 1.0, fy, fz + 1.0);
-                        tess.tex(tu0, tv1);
-                        tess.vertex(fx, fy, fz + 1.0);
-                    }
-                    // North (Z-)
-                    if (isFaceVisible(block_id, self.getBlock(gx, gy, gz - 1))) {
-                        const col = getBlockColor(block_id, .north);
-                        const tex_idx = getBlockTextureIndex(block_id, .north);
-                        const tu0 = @as(f32, @floatFromInt(tex_idx % 16)) / 16.0;
-                        const tv0 = @as(f32, @floatFromInt(tex_idx / 16)) / 16.0;
-                        const tu1 = tu0 + 1.0 / 16.0;
-                        const tv1 = tv0 + 1.0 / 16.0;
-
-                        tess.colorF(col[0], col[1], col[2], 1.0);
-                        tess.tex(tu0, tv1);
-                        tess.vertex(fx, fy, fz);
-                        tess.tex(tu0, tv0);
-                        tess.vertex(fx, fy + 1.0, fz);
-                        tess.tex(tu1, tv0);
-                        tess.vertex(fx + 1.0, fy + 1.0, fz);
-                        tess.tex(tu1, tv1);
-                        tess.vertex(fx + 1.0, fy, fz);
-                    }
-                    // South (Z+)
-                    if (isFaceVisible(block_id, self.getBlock(gx, gy, gz + 1))) {
-                        const col = getBlockColor(block_id, .south);
-                        const tex_idx = getBlockTextureIndex(block_id, .south);
-                        const tu0 = @as(f32, @floatFromInt(tex_idx % 16)) / 16.0;
-                        const tv0 = @as(f32, @floatFromInt(tex_idx / 16)) / 16.0;
-                        const tu1 = tu0 + 1.0 / 16.0;
-                        const tv1 = tv0 + 1.0 / 16.0;
-
-                        tess.colorF(col[0], col[1], col[2], 1.0);
-                        tess.tex(tu1, tv1);
-                        tess.vertex(fx + 1.0, fy, fz + 1.0);
-                        tess.tex(tu1, tv0);
-                        tess.vertex(fx + 1.0, fy + 1.0, fz + 1.0);
-                        tess.tex(tu0, tv0);
-                        tess.vertex(fx, fy + 1.0, fz + 1.0);
-                        tess.tex(tu0, tv1);
-                        tess.vertex(fx, fy, fz + 1.0);
-                    }
-                    // West (X-)
-                    if (isFaceVisible(block_id, self.getBlock(gx - 1, gy, gz))) {
-                        const col = getBlockColor(block_id, .west);
-                        const tex_idx = getBlockTextureIndex(block_id, .west);
-                        const tu0 = @as(f32, @floatFromInt(tex_idx % 16)) / 16.0;
-                        const tv0 = @as(f32, @floatFromInt(tex_idx / 16)) / 16.0;
-                        const tu1 = tu0 + 1.0 / 16.0;
-                        const tv1 = tv0 + 1.0 / 16.0;
-
-                        tess.colorF(col[0], col[1], col[2], 1.0);
-                        tess.tex(tu0, tv1);
-                        tess.vertex(fx, fy, fz + 1.0);
-                        tess.tex(tu0, tv0);
-                        tess.vertex(fx, fy + 1.0, fz + 1.0);
-                        tess.tex(tu1, tv0);
-                        tess.vertex(fx, fy + 1.0, fz);
-                        tess.tex(tu1, tv1);
-                        tess.vertex(fx, fy, fz);
-                    }
-                    // East (X+)
-                    if (isFaceVisible(block_id, self.getBlock(gx + 1, gy, gz))) {
-                        const col = getBlockColor(block_id, .east);
-                        const tex_idx = getBlockTextureIndex(block_id, .east);
-                        const tu0 = @as(f32, @floatFromInt(tex_idx % 16)) / 16.0;
-                        const tv0 = @as(f32, @floatFromInt(tex_idx / 16)) / 16.0;
-                        const tu1 = tu0 + 1.0 / 16.0;
-                        const tv1 = tv0 + 1.0 / 16.0;
-
-                        tess.colorF(col[0], col[1], col[2], 1.0);
-                        tess.tex(tu1, tv1);
-                        tess.vertex(fx + 1.0, fy, fz);
-                        tess.tex(tu1, tv0);
-                        tess.vertex(fx + 1.0, fy + 1.0, fz);
-                        tess.tex(tu0, tv0);
-                        tess.vertex(fx + 1.0, fy + 1.0, fz + 1.0);
-                        tess.tex(tu0, tv1);
-                        tess.vertex(fx + 1.0, fy, fz + 1.0);
-                    }
+            var dx: i32 = -1;
+            while (dx <= 1) : (dx += 1) {
+                var dz: i32 = -1;
+                while (dz <= 1) : (dz += 1) {
+                    const col = self.level_source.getChunk(cx + dx, cz + dz) catch null;
+                    col_blocks[@intCast(dx + 1)][@intCast(dz + 1)] = if (col) |c| c.blocks else null;
                 }
+            }
+        }
+
+        var lx: i32 = -1;
+        while (lx <= 16) : (lx += 1) {
+            const dx_idx: usize = if (lx == -1) 0 else if (lx == 16) 2 else 1;
+            const bx: i32 = if (lx == -1) 15 else if (lx == 16) 0 else lx;
+
+            var lz: i32 = -1;
+            while (lz <= 16) : (lz += 1) {
+                const dz_idx: usize = if (lz == -1) 0 else if (lz == 16) 2 else 1;
+                const bz: i32 = if (lz == -1) 15 else if (lz == 16) 0 else lz;
+
+                const blocks_opt = col_blocks[dx_idx][dz_idx];
+
+                var ly: i32 = -1;
+                while (ly <= 16) : (ly += 1) {
+                    const gy = expected_y + ly;
+                    const x_idx = lx + 1;
+                    const y_idx = ly + 1;
+                    const z_idx = lz + 1;
+
+                    var block_id: u8 = 0;
+                    if (gy >= 0 and gy < 128) {
+                        if (blocks_opt) |blocks| {
+                            block_id = blocks[chunk.blockOffset(bx, gy, bz)];
+                        }
+                    }
+                    local_data.blocks[@intCast((x_idx * 18 + z_idx) * 18 + y_idx)] = block_id;
+                }
+            }
+        }
+
+        // 2. Perform CPU-heavy tessellation completely offline/unlocked
+        var result = RebuildResult{
+            .slot_idx = slot_idx,
+            .expected_x = expected_x,
+            .expected_y = expected_y,
+            .expected_z = expected_z,
+            .layers = undefined,
+        };
+        errdefer {
+            for (result.layers) |l| {
+                if (l.verts.len > 0) self.alloc.free(l.verts);
             }
         }
 
         inline for (0..NUM_LAYERS) |li| {
-            const layer = &slot.layers[li];
-            const tess = switch (li) {
-                0 => &tessy_opaque,
-                1 => &tessy_alpha,
-                2 => &tessy_blend,
-                else => unreachable,
+            var tessy = tss.Tesselator.init(self.alloc) catch |err| switch (err) {
+                error.OutOfMemory => return,
             };
+            defer tessy.deinit();
 
-            const verts = tess.finish();
-            if (verts.len > 0) {
-                if (layer.vbuf.buf == 0) {
-                    layer.vbuf = try gpu.GpuBuffer.init(self.context, CHUNK_VBUF_BYTES, vk.VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+            tessy.beginMode(.quads);
+
+            var bx: i32 = 0;
+            while (bx < 16) : (bx += 1) {
+                var bz: i32 = 0;
+                while (bz < 16) : (bz += 1) {
+                    var by: i32 = 0;
+                    while (by < 16) : (by += 1) {
+                        const block_id = local_data.getBlock(bx, by, bz);
+                        if (block_id == 0) continue; // air
+
+                        const layer = getBlockLayer(block_id) orelse continue;
+                        if (layer != li) continue;
+
+                        const fx = @as(f32, @floatFromInt(bx)) + @as(f32, @floatFromInt(expected_x));
+                        const fy = @as(f32, @floatFromInt(by)) + @as(f32, @floatFromInt(expected_y));
+                        const fz = @as(f32, @floatFromInt(bz)) + @as(f32, @floatFromInt(expected_z));
+
+                        // Up (Y+)
+                        if (isFaceVisible(block_id, local_data.getBlock(bx, by + 1, bz))) {
+                            const col = getBlockColor(block_id, .up);
+                            const tex_idx = getBlockTextureIndex(block_id, .up);
+                            const tu0 = @as(f32, @floatFromInt(tex_idx % 16)) / 16.0;
+                            const tv0 = @as(f32, @floatFromInt(tex_idx / 16)) / 16.0;
+                            const tu1 = tu0 + 1.0 / 16.0;
+                            const tv1 = tv0 + 1.0 / 16.0;
+
+                            tessy.colorF(col[0], col[1], col[2], 1.0);
+                            tessy.tex(tu0, tv1);
+                            tessy.vertex(fx, fy + 1.0, fz + 1.0);
+                            tessy.tex(tu0, tv0);
+                            tessy.vertex(fx, fy + 1.0, fz);
+                            tessy.tex(tu1, tv0);
+                            tessy.vertex(fx + 1.0, fy + 1.0, fz);
+                            tessy.tex(tu1, tv1);
+                            tessy.vertex(fx + 1.0, fy + 1.0, fz + 1.0);
+                        }
+                        // Down (Y-)
+                        if (isFaceVisible(block_id, local_data.getBlock(bx, by - 1, bz))) {
+                            const col = getBlockColor(block_id, .down);
+                            const tex_idx = getBlockTextureIndex(block_id, .down);
+                            const tu0 = @as(f32, @floatFromInt(tex_idx % 16)) / 16.0;
+                            const tv0 = @as(f32, @floatFromInt(tex_idx / 16)) / 16.0;
+                            const tu1 = tu0 + 1.0 / 16.0;
+                            const tv1 = tv0 + 1.0 / 16.0;
+
+                            tessy.colorF(col[0], col[1], col[2], 1.0);
+                            tessy.tex(tu0, tv0);
+                            tessy.vertex(fx, fy, fz);
+                            tessy.tex(tu0, tv1);
+                            tessy.vertex(fx, fy, fz + 1.0);
+                            tessy.tex(tu1, tv1);
+                            tessy.vertex(fx + 1.0, fy, fz + 1.0);
+                            tessy.tex(tu1, tv0);
+                            tessy.vertex(fx + 1.0, fy, fz);
+                        }
+                        // North (Z-)
+                        if (isFaceVisible(block_id, local_data.getBlock(bx, by, bz - 1))) {
+                            const col = getBlockColor(block_id, .north);
+                            const tex_idx = getBlockTextureIndex(block_id, .north);
+                            const tu0 = @as(f32, @floatFromInt(tex_idx % 16)) / 16.0;
+                            const tv0 = @as(f32, @floatFromInt(tex_idx / 16)) / 16.0;
+                            const tu1 = tu0 + 1.0 / 16.0;
+                            const tv1 = tv0 + 1.0 / 16.0;
+
+                            tessy.colorF(col[0], col[1], col[2], 1.0);
+                            tessy.tex(tu0, tv1);
+                            tessy.vertex(fx, fy, fz);
+                            tessy.tex(tu1, tv1);
+                            tessy.vertex(fx + 1.0, fy, fz);
+                            tessy.tex(tu1, tv0);
+                            tessy.vertex(fx + 1.0, fy + 1.0, fz);
+                            tessy.tex(tu0, tv0);
+                            tessy.vertex(fx, fy + 1.0, fz);
+                        }
+                        // South (Z+)
+                        if (isFaceVisible(block_id, local_data.getBlock(bx, by, bz + 1))) {
+                            const col = getBlockColor(block_id, .south);
+                            const tex_idx = getBlockTextureIndex(block_id, .south);
+                            const tu0 = @as(f32, @floatFromInt(tex_idx % 16)) / 16.0;
+                            const tv0 = @as(f32, @floatFromInt(tex_idx / 16)) / 16.0;
+                            const tu1 = tu0 + 1.0 / 16.0;
+                            const tv1 = tv0 + 1.0 / 16.0;
+
+                            tessy.colorF(col[0], col[1], col[2], 1.0);
+                            tessy.tex(tu1, tv1);
+                            tessy.vertex(fx + 1.0, fy, fz + 1.0);
+                            tessy.tex(tu0, tv1);
+                            tessy.vertex(fx, fy, fz + 1.0);
+                            tessy.tex(tu0, tv0);
+                            tessy.vertex(fx, fy + 1.0, fz + 1.0);
+                            tessy.tex(tu1, tv0);
+                            tessy.vertex(fx + 1.0, fy + 1.0, fz + 1.0);
+                        }
+                        // West (X-)
+                        if (isFaceVisible(block_id, local_data.getBlock(bx - 1, by, bz))) {
+                            const col = getBlockColor(block_id, .west);
+                            const tex_idx = getBlockTextureIndex(block_id, .west);
+                            const tu0 = @as(f32, @floatFromInt(tex_idx % 16)) / 16.0;
+                            const tv0 = @as(f32, @floatFromInt(tex_idx / 16)) / 16.0;
+                            const tu1 = tu0 + 1.0 / 16.0;
+                            const tv1 = tv0 + 1.0 / 16.0;
+
+                            tessy.colorF(col[0], col[1], col[2], 1.0);
+                            tessy.tex(tu0, tv1);
+                            tessy.vertex(fx, fy, fz);
+                            tessy.tex(tu0, tv0);
+                            tessy.vertex(fx, fy + 1.0, fz);
+                            tessy.tex(tu1, tv0);
+                            tessy.vertex(fx, fy + 1.0, fz + 1.0);
+                            tessy.tex(tu1, tv1);
+                            tessy.vertex(fx, fy, fz + 1.0);
+                        }
+                        // East (X+)
+                        if (isFaceVisible(block_id, local_data.getBlock(bx + 1, by, bz))) {
+                            const col = getBlockColor(block_id, .east);
+                            const tex_idx = getBlockTextureIndex(block_id, .east);
+                            const tu0 = @as(f32, @floatFromInt(tex_idx % 16)) / 16.0;
+                            const tv0 = @as(f32, @floatFromInt(tex_idx / 16)) / 16.0;
+                            const tu1 = tu0 + 1.0 / 16.0;
+                            const tv1 = tv0 + 1.0 / 16.0;
+
+                            tessy.colorF(col[0], col[1], col[2], 1.0);
+                            tessy.tex(tu0, tv1);
+                            tessy.vertex(fx + 1.0, fy, fz + 1.0);
+                            tessy.tex(tu0, tv0);
+                            tessy.vertex(fx + 1.0, fy + 1.0, fz + 1.0);
+                            tessy.tex(tu1, tv0);
+                            tessy.vertex(fx + 1.0, fy + 1.0, fz);
+                            tessy.tex(tu1, tv1);
+                            tessy.vertex(fx + 1.0, fy, fz);
+                        }
+                    }
                 }
-                try layer.vbuf.uploadVertices(self.context, verts);
-                layer.dirty = false;
-                layer.empty = false;
+            }
+
+            const verts = tessy.finish();
+            if (verts.len > 0) {
+                const cloned = self.alloc.dupe(tss.Vertex, verts) catch |err| switch (err) {
+                    error.OutOfMemory => return,
+                };
+                result.layers[li] = .{ .verts = cloned };
             } else {
-                layer.empty = true;
-                layer.dirty = false;
+                result.layers[li] = .{ .verts = &.{} };
             }
         }
+
+        try io.checkCancel();
+
+        self.completed_queue.putOne(io, result) catch |err| switch (err) {
+            error.Closed => return,
+            error.Canceled => return error.Canceled,
+        };
     }
 
     pub fn getBlock(self: *LevelRenderer, x: i32, y: i32, z: i32) u8 {
@@ -1255,6 +1570,19 @@ pub const LevelRenderer = struct {
         return level_chunk.blocks[chunk.blockOffset(bx, y, bz)];
     }
 };
+
+fn uploadToBufferOffset(
+    context: *ctx.VkContext,
+    buf_mem: vk.VkDeviceMemory,
+    offset: vk.VkDeviceSize,
+    data: []const u8,
+) !void {
+    var mapped: ?*anyopaque = null;
+    const r = context.vf.vkMapMemory(context.device, buf_mem, offset, @intCast(data.len), 0, &mapped);
+    if (r != vk.VK_SUCCESS) return error.MapMemoryFailed;
+    @memcpy(@as([*]u8, @ptrCast(mapped.?))[0..data.len], data);
+    context.vf.vkUnmapMemory(context.device, buf_mem);
+}
 
 // ---------------------------------------------------------------------------
 // generateSkyGeometry  (mirrors C++ LevelRenderer::generateSky)

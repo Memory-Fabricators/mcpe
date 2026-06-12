@@ -1,15 +1,6 @@
-//! vk_loader.zig
-//! Runtime Vulkan function loader via SDL3's SDL_Vulkan_GetVkGetInstanceProcAddr.
-//!
-//! SDL3 ships its own Vulkan loader on every platform (including MoltenVK on
-//! macOS), so we never link against libvulkan directly – we only link libSDL3.
-
 const std = @import("std");
 const vk = @import("vk_types.zig");
 
-// --------------------------------------------------------------------------
-// SDL3 C bindings (only the handful we actually need)
-// --------------------------------------------------------------------------
 pub const SDL_Window = vk.SDL_Window;
 
 pub extern fn SDL_Init(flags: u32) bool;
@@ -23,11 +14,9 @@ pub extern fn SDL_GetWindowSize(win: *SDL_Window, w: *c_int, h: *c_int) void;
 pub extern fn SDL_GetWindowSizeInPixels(win: *SDL_Window, w: *c_int, h: *c_int) bool;
 pub extern fn SDL_PumpEvents() void;
 pub extern fn SDL_SetHint(name: [*:0]const u8, value: [*:0]const u8) bool;
-// Mouse / keyboard
 pub extern fn SDL_SetWindowRelativeMouseMode(win: *SDL_Window, enabled: bool) bool;
 pub extern fn SDL_GetRelativeMouseState(x: *f32, y: *f32) u32;
 pub extern fn SDL_GetKeyboardState(numkeys: *c_int) ?[*]const bool;
-// SDL_Scancode
 pub const SDL_SCANCODE_W = 26;
 pub const SDL_SCANCODE_A = 4;
 pub const SDL_SCANCODE_S = 22;
@@ -38,35 +27,27 @@ pub const SDL_SCANCODE_ESCAPE = 41;
 pub const SDL_SCANCODE_SPACE = 44;
 pub const SDL_SCANCODE_LSHIFT = 225;
 
-// SDL_Vulkan_*
 pub extern fn SDL_Vulkan_LoadLibrary(path: ?[*:0]const u8) bool;
 pub extern fn SDL_Vulkan_UnloadLibrary() void;
 pub extern fn SDL_Vulkan_GetVkGetInstanceProcAddr() ?*const anyopaque;
 pub extern fn SDL_Vulkan_GetInstanceExtensions(count: *u32) ?[*][*:0]const u8;
 pub extern fn SDL_Vulkan_CreateSurface(win: *SDL_Window, instance: vk.VkInstance, allocator: ?*const anyopaque, surface: *vk.VkSurfaceKHR) bool;
 
-// Minimal SDL event (we only care about quit + window)
-// SDL_EventType values (SDL3)
 pub const SDL_EVENT_QUIT: u32 = 0x100;
-pub const SDL_EVENT_WINDOW_CLOSE_REQUESTED: u32 = 0x223; // red-X on macOS
+pub const SDL_EVENT_WINDOW_CLOSE_REQUESTED: u32 = 0x223;
 pub const SDL_EVENT_WINDOW_RESIZED: u32 = 0x205;
 pub const SDL_EVENT_KEY_DOWN: u32 = 0x300;
-// Legacy alias so existing code compiles
+
 pub const SDL_QUIT = SDL_EVENT_QUIT;
 
 pub const SDL_WINDOW_VULKAN: u64 = 0x0000000010000000;
 pub const SDL_INIT_VIDEO: u32 = 0x00000020;
 
-// SDL_Event is a union padded to 128 bytes (confirmed from SDL3 headers).
 pub const SDLEvent = extern struct {
     type: u32,
     _pad: [124]u8,
 };
 
-// --------------------------------------------------------------------------
-// vkCreateInstance – loaded from the SDL Vulkan loader before we have a
-// VkInstance (so we cannot use VkFuncs yet).
-// --------------------------------------------------------------------------
 var _vkCreateInstance: ?*const fn (
     *const vk.VkInstanceCreateInfo,
     ?*const anyopaque,
@@ -78,20 +59,17 @@ var _vkGetInstanceProcAddr: ?*const fn (
     [*:0]const u8,
 ) callconv(.c) ?*const anyopaque = null;
 
-/// Call after SDL_Vulkan_LoadLibrary to prime the two bootstrap functions.
 pub fn initLoader() !void {
     const raw = SDL_Vulkan_GetVkGetInstanceProcAddr() orelse
         return error.NoVkGetInstanceProcAddr;
     _vkGetInstanceProcAddr = @ptrCast(@alignCast(raw));
 
-    // vkCreateInstance is loaded with a null instance
     _vkCreateInstance = @ptrCast(@alignCast(
         _vkGetInstanceProcAddr.?(null, "vkCreateInstance") orelse
             return error.NoVkCreateInstance,
     ));
 }
 
-/// Create a VkInstance.
 pub fn createInstance(info: *const vk.VkInstanceCreateInfo) !vk.VkInstance {
     var inst: vk.VkInstance = null;
     const r = _vkCreateInstance.?(info, null, &inst);
@@ -99,18 +77,15 @@ pub fn createInstance(info: *const vk.VkInstanceCreateInfo) !vk.VkInstance {
     return inst;
 }
 
-/// Load ALL device/instance functions we need into a VkFuncs table.
 pub fn loadFuncs(instance: vk.VkInstance, device: vk.VkDevice) !vk.VkFuncs {
     const gipa = _vkGetInstanceProcAddr.?;
 
-    // Helper: load an instance-level proc (device may be null during early load)
     const iproc = struct {
         fn get(inst: vk.VkInstance, name: [*:0]const u8) ?*const anyopaque {
             return _vkGetInstanceProcAddr.?(inst, name);
         }
     }.get;
 
-    // For device-level procs we use vkGetDeviceProcAddr once we have a device.
     const gdpa_raw: ?*const anyopaque = iproc(instance, "vkGetDeviceProcAddr");
     const gdpa: *const fn (vk.VkDevice, [*:0]const u8) callconv(.c) ?*const anyopaque =
         @ptrCast(@alignCast(gdpa_raw orelse return error.NoVkGetDeviceProcAddr));
@@ -121,7 +96,7 @@ pub fn loadFuncs(instance: vk.VkInstance, device: vk.VkDevice) !vk.VkFuncs {
         }
     }.get;
 
-    _ = gipa; // suppress unused warning
+    _ = gipa;
 
     return .{
         .vkDestroyInstance = @ptrCast(@alignCast(iproc(instance, "vkDestroyInstance") orelse return error.MissingFn)),
