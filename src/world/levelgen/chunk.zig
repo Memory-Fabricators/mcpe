@@ -14,7 +14,10 @@ pub const ChunkPos = struct {
     z: i32,
 
     pub fn hashCode(x: i32, z: i32) i64 {
-        return (@as(i64, x) << 32) | @as(i64, @bitCast(@as(u32, @bitCast(z))));
+        const ux = @as(u32, @bitCast(x));
+        const uz = @as(u32, @bitCast(z));
+        const combined = (@as(u64, ux) << 32) | @as(u64, uz);
+        return @bitCast(combined);
     }
 
     pub fn toHash(self: ChunkPos) i64 {

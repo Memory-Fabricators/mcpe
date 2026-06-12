@@ -31,7 +31,7 @@ pub const Random = struct {
     pub fn initTime() Random {
         // Use stack pointer as entropy for a time-based seed equivalent
         var x: u8 = 0;
-        const seed: i64 = @intCast(@intFromPtr(&x));
+        const seed: i64 = @bitCast(@intFromPtr(&x));
         return Random.init(seed);
     }
 
@@ -39,7 +39,7 @@ pub const Random = struct {
         self.mti = N + 1;
         self.have_next_next_gaussian = false;
         self.next_next_gaussian = 0;
-        const s: u32 = @intCast(seed);
+        const s: u32 = @truncate(@as(u64, @bitCast(seed)));
         self.mt[0] = s;
         var i: usize = 1;
         while (i < N) : (i += 1) {
@@ -64,8 +64,9 @@ pub const Random = struct {
     }
 
     pub fn nextIntBounded(self: *Random, n: i32) i32 {
+        std.debug.assert(n > 0);
         const u = self.genrand_int32();
-        return @intCast(@as(u32, @bitCast(@as(i32, @intCast(u)))) % @as(u32, @intCast(n)));
+        return @intCast(u % @as(u32, @intCast(n)));
     }
 
     pub fn nextLong(self: *Random) i64 {

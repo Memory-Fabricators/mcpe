@@ -7,7 +7,7 @@
 const std = @import("std");
 const Random = @import("random").Random;
 const PerlinNoise = @import("synth/perlin_noise.zig").PerlinNoise;
-const chunk = @import("chunk.zig");
+pub const chunk = @import("chunk.zig");
 
 const ChunkPos = chunk.ChunkPos;
 const DataLayer = chunk.DataLayer;
@@ -75,7 +75,7 @@ const OreFeature = struct {
         const f = @as(f32, @floatFromInt(rng.nextIntBounded(256))) / 256.0;
         const radius_count = @as(f32, @floatFromInt(self.cluster_size)) * (0.5 + f * 2.0);
         var radius_angle = @as(f32, @floatFromInt(rng.nextIntBounded(256))) / 256.0 * std.math.pi * 2.0;
-        const radius_y_angle = @as(f32, @floatFromInt(rng.nextIntBounded(256))) / 256.0 * std.math.pi;
+        var radius_y_angle = @as(f32, @floatFromInt(rng.nextIntBounded(256))) / 256.0 * std.math.pi;
 
         const origin_x: f32 = @floatFromInt(x);
         const origin_y: f32 = @floatFromInt(y);
@@ -317,8 +317,10 @@ pub const RandomLevelSource = struct {
 
         // Scale and depth noise are 2D
         const w = x_size * z_size;
+        std.debug.assert(w <= 64);
+        var scale_tmp: [64]f32 = undefined;
         _ = try self.scale_noise.getRegion(
-            null,
+            scale_tmp[0..@intCast(w)],
             @floatFromInt(x),
             10.0,
             @floatFromInt(z),
@@ -329,8 +331,9 @@ pub const RandomLevelSource = struct {
             1.0,
             1.121,
         );
+        var depth_tmp: [64]f32 = undefined;
         _ = try self.depth_noise.getRegion(
-            null,
+            depth_tmp[0..@intCast(w)],
             @floatFromInt(x),
             10.0,
             @floatFromInt(z),
@@ -347,7 +350,6 @@ pub const RandomLevelSource = struct {
         const ar = try self.lperlin_noise1.getRegion(null, @floatFromInt(x), @floatFromInt(y), @floatFromInt(z), x_size, y_size, z_size, s, hs, s);
         const br = try self.lperlin_noise2.getRegion(null, @floatFromInt(x), @floatFromInt(y), @floatFromInt(z), x_size, y_size, z_size, s, hs, s);
 
-        _ = w;
         defer self.allocator.free(pnr);
         defer self.allocator.free(ar);
         defer self.allocator.free(br);
@@ -482,8 +484,8 @@ pub const RandomLevelSource = struct {
         const zo = z_offs * 16;
 
         self.random.setSeed(self.seed);
-        const x_scale: i32 = self.random.nextInt() / 2 * 2 + 1;
-        const z_scale: i32 = self.random.nextInt() / 2 * 2 + 1;
+        const x_scale: i32 = @divTrunc(self.random.nextInt(), 2) * 2 + 1;
+        const z_scale: i32 = @divTrunc(self.random.nextInt(), 2) * 2 + 1;
         self.random.setSeed((@as(i64, x_offs) * @as(i64, x_scale) + @as(i64, z_offs) * @as(i64, z_scale)) ^ self.seed);
 
         // Clay veins
