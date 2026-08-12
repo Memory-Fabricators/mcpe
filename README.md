@@ -19,3 +19,7 @@ cmake --build build
 # Start the client
 ./build/mcpe_sdl3
 ```
+
+## HTML/Wasm (Emscripten)
+
+See [docs/emscripten.md](docs/emscripten.md) for the Meson-only web build.

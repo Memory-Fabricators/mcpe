@@ -1,6 +1,9 @@
 #include "gles.h"
 #include "SDL3/SDL_video.h"
 #include <cmath>
+#ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
+#endif
 
 static const float __glPi = 3.14159265358979323846f;
 
@@ -50,9 +53,21 @@ void __gluMakeIdentityf(GLfloat m[16]) {
 void glInit(SDL_Window *window) {}
 
 void anGenBuffers(GLsizei n, GLuint *buffers) {
+#ifdef __EMSCRIPTEN__
+  // SDL3's Emscripten backend can leave Emscripten's internal GLctx unset
+  // after creating the otherwise-valid WebGL context. Restore it before
+  // calling Emscripten's GLES buffer bindings.
+  EM_ASM({
+    GLctx = Module["ctx"] || Module["canvas"].getContext("webgl") ||
+            Module["canvas"].getContext("experimental-webgl");
+    Module["ctx"] = GLctx;
+  });
+  glGenBuffers(n, buffers);
+#else
   static GLuint k = 1;
   for (int i = 0; i < n; ++i)
     buffers[i] = ++k;
+#endif
 }
 
 #ifdef USE_VBO

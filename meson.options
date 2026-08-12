@@ -4,3 +4,17 @@ option(
     value: true,
     description: 'Build the client (mcpe_sdl3)',
 )
+
+option(
+    'build_server',
+    type: 'boolean',
+    value: true,
+    description: 'Build the dedicated server',
+)
+
+option(
+    'web',
+    type: 'boolean',
+    value: false,
+    description: 'Build an HTML/Wasm client with Emscripten',
+)

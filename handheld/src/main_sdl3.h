@@ -11,6 +11,10 @@
 
 #include <SDL3/SDL.h>
 #include <unistd.h>
+#ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
+#include <emscripten/html5_webgl.h>
+#endif
 
 #define check() assert(glGetError() == 0)
 
@@ -190,8 +194,24 @@ void move_surface(App *app, AppContext *state, uint32_t x, uint32_t y,
   SDL_ShowWindow(state->window);
   SDL_RaiseWindow(state->window);
   SDL_GL_MakeCurrent(state->window, state->context);
-  SDL_GL_SetSwapInterval(0);
 
+#ifdef __EMSCRIPTEN__
+  // SDL creates this context directly, bypassing Browser.createContext().
+  // LEGACY_GL_EMULATION must be notified on the game worker as well.
+  const auto webglContext = static_cast<EMSCRIPTEN_WEBGL_CONTEXT_HANDLE>(
+      reinterpret_cast<intptr_t>(state->context));
+  if (emscripten_webgl_make_context_current(webglContext) !=
+      EMSCRIPTEN_RESULT_SUCCESS) {
+    fprintf(stderr, "Failed to make WebGL context current\n");
+    return;
+  }
+  EM_ASM({
+    Browser.useWebGL = true;
+    Browser.moduleContextCreatedCallbacks.forEach(
+        function(callback) { callback(); });
+  });
+#endif
+  SDL_GL_SetSwapInterval(0);
   _inited_egl = true;
 
   if (!_app_inited) {
@@ -358,6 +378,28 @@ void updateWindowPosition(App *app, AppContext *state) {
   }
 }
 
+#ifdef __EMSCRIPTEN__
+struct WebAppState {
+  MinecraftApp *app;
+  AppContext *context;
+};
+
+static void runWebFrame(void *arg) {
+  WebAppState *state = static_cast<WebAppState *>(arg);
+  updateWindowPosition(state->app, state->context);
+  if (handleEvents(state->app, state->context) != 0 ||
+      state->app->wantToQuit()) {
+    emscripten_cancel_main_loop();
+    deinitEgl(state->context);
+    delete state->app;
+    delete state->context;
+    delete state;
+    return;
+  }
+  state->app->update();
+}
+#endif
+
 int main(int argc, char **argv) {
   if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
     printf("Couldn't initialize SDL\n");
@@ -400,8 +442,14 @@ int main(int argc, char **argv) {
   SDL_StartTextInput(context.window);
 
   MinecraftApp *app = new MinecraftApp(context.window);
-  std::string storagePath = getenv("HOME");
+  std::string storagePath;
+#ifdef __EMSCRIPTEN__
+  storagePath = "/.minecraft/";
+#else
+  if (const char *home = getenv("HOME"))
+    storagePath = home;
   storagePath += "/.minecraft/";
+#endif
   app->externalStoragePath = storagePath;
   app->externalCacheStoragePath = storagePath;
 
@@ -415,6 +463,10 @@ int main(int argc, char **argv) {
 
   initEgl(app, &context, width, height);
 
+#ifdef __EMSCRIPTEN__
+  WebAppState *webState = new WebAppState{app, new AppContext(context)};
+  emscripten_set_main_loop_arg(runWebFrame, webState, 0, true);
+#else
   bool running = true;
   while (running) {
     updateWindowPosition(app, &context);
@@ -424,6 +476,9 @@ int main(int argc, char **argv) {
   }
 
   deinitEgl(&context);
+#endif
 
+#ifndef __EMSCRIPTEN__
   return 0;
+#endif
 }
