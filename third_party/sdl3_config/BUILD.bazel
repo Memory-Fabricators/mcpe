@@ -1,0 +1,4 @@
+# Reference copy of the SDL_build_config.h that third_party/sdl3/patches
+# injects into the fetched @sdl3 repo (as src/SDL_build_config.h). Kept here,
+# under version control, for readability/diffing; not built directly.
+exports_files(["SDL_build_config.h"])

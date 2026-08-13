@@ -62,7 +62,7 @@ void ExternalFileLevelStorageSource::addLevelSummaryIfExists(
 }
 
 void ExternalFileLevelStorageSource::getLevelList(LevelSummaryList &dest) {
-#ifdef WIN32
+#ifdef _WIN32
 
   WIN32_FIND_DATAA fileData;
   HANDLE hFind;

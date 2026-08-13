@@ -7,11 +7,14 @@
 
 bool DeleteDirectory(const std::string &, bool noRecycleBin = true);
 
-#ifdef WIN32
+#ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
 #include <shellapi.h>
 #include <string>
 #include <tchar.h>
-#include <windows.h>
 
 bool DeleteDirectory(const std::string &dir, bool noRecycleBin /*true*/) {
   int len = strlen(dir.c_str());
@@ -64,6 +67,6 @@ bool DeleteDirectory(const std::string &d, bool noRecycleBin /*true*/) {
   return remove(folder) == 0;
 }
 
-#endif /*(ELSE) WIN32*/
+#endif /*(ELSE) _WIN32*/
 
 #endif /*FILE_H__*/

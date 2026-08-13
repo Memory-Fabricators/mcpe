@@ -1,0 +1,111 @@
+diff --git a/src/SDL_build_config.h b/src/SDL_build_config.h
+new file mode 100644
+index 0000000..e055ed1
+--- /dev/null
++++ b/src/SDL_build_config.h
+@@ -0,0 +1,105 @@
++/*
++  Hand-authored SDL_build_config.h for this project's minimal SDL3 build
++  (see //third_party/sdl3:BUILD.sdl3.bazel). Based on upstream SDL3's
++  include/build_config/SDL_build_config_minimal.h, with the video,
++  filesystem, loadso, locale, thread, timer, and time subsystems switched
++  from their dummy/disabled stand-ins to the real per-OS backend, since this
++  project actually needs windowing and an OpenGL ES (EGL) context. All other
++  subsystems (audio, joystick, haptic, hidapi, sensor, camera, dialog, tray,
++  process) stay on their dummy/disabled stand-in, matching what
++  //third_party/sdl3:BUILD.sdl3.bazel actually compiles.
++
++  This file is found before the SDL3 source tree's own
++  include/build_config/SDL_build_config.h because quoted #includes search the
++  including file's own directory (src/SDL_internal.h) first; it is added at
++  src/SDL_build_config.h inside the fetched SDL3 archive by
++  //third_party/sdl3/patches:0001-add-build-config-header.patch, applied via
++  the `patches` attribute of the `sdl3` http_archive in //MODULE.bazel.
++*/
++#ifndef SDL_build_config_h_
++#define SDL_build_config_h_
++
++#include <SDL3/SDL_platform_defines.h>
++
++#define HAVE_STDARG_H 1
++#define HAVE_STDDEF_H 1
++
++#if !defined(HAVE_STDINT_H) && !defined(_STDINT_H_)
++#if defined(_MSC_VER) && (_MSC_VER < 1600)
++typedef signed __int8 int8_t;
++typedef unsigned __int8 uint8_t;
++typedef signed __int16 int16_t;
++typedef unsigned __int16 uint16_t;
++typedef signed __int32 int32_t;
++typedef unsigned __int32 uint32_t;
++typedef signed __int64 int64_t;
++typedef unsigned __int64 uint64_t;
++#ifndef _UINTPTR_T_DEFINED
++#ifdef _WIN64
++typedef unsigned __int64 uintptr_t;
++#else
++typedef unsigned int uintptr_t;
++#endif
++#endif
++#else
++#define HAVE_STDINT_H 1
++#endif /* Visual Studio 2008 */
++#endif /* !_STDINT_H_ && !HAVE_STDINT_H */
++
++#ifdef __GNUC__
++#define HAVE_GCC_SYNC_LOCK_TEST_AND_SET 1
++#endif
++
++/* Optional subsystems this project doesn't use (see main_sdl3.h: only
++   SDL_INIT_VIDEO | SDL_INIT_EVENTS). Fully disabled, no dummy backend.
++   Threads are NOT disabled here even though the app never calls
++   SDL_CreateThread itself: SDL's video/event internals still rely on real
++   SDL_mutex/SDL_cond primitives, and SDL_THREADS_DISABLED conflicts with
++   (and breaks the build of) the real per-OS SDL_THREAD_WINDOWS/PTHREAD
++   backend selected below. */
++#define SDL_JOYSTICK_DISABLED 1
++#define SDL_HAPTIC_DISABLED 1
++#define SDL_HIDAPI_DISABLED 1
++#define SDL_SENSOR_DISABLED 1
++
++/* Mandatory subsystems SDL_Init's dispatch table always references; kept on
++   their dummy/no-op backend since this project doesn't use them either. */
++#define SDL_AUDIO_DRIVER_DUMMY 1
++#define SDL_CAMERA_DRIVER_DUMMY 1
++#define SDL_DIALOG_DUMMY 1
++#define SDL_TRAY_DUMMY 1
++#define SDL_PROCESS_DUMMY 1
++
++/* Real per-OS backends: windowing + GL(ES)/EGL context creation is the
++   entire point of vendoring SDL3 here. */
++#if defined(SDL_PLATFORM_WINDOWS)
++#define SDL_VIDEO_DRIVER_WINDOWS 1
++#define SDL_FILESYSTEM_WINDOWS 1
++#define SDL_FSOPS_WINDOWS 1
++#define SDL_LOADSO_WINDOWS 1
++#define SDL_THREAD_WINDOWS 1
++/* The windows thread backend compiles both its native SRW/CV-based
++   primitives and a semaphore-based generic fallback (chosen at runtime
++   depending on OS support), so the generic implementation's symbols need
++   the _generic suffix instead of colliding with the native ones. */
++#define SDL_THREAD_GENERIC_COND_SUFFIX 1
++#define SDL_THREAD_GENERIC_RWLOCK_SUFFIX 1
++#define SDL_TIME_WINDOWS 1
++#elif defined(SDL_PLATFORM_MACOS)
++#define SDL_VIDEO_DRIVER_COCOA 1
++#define SDL_FILESYSTEM_COCOA 1
++#define SDL_FSOPS_POSIX 1
++#define SDL_LOADSO_DLOPEN 1
++#define SDL_THREAD_PTHREAD 1
++#define SDL_TIME_UNIX 1
++#else
++#define SDL_VIDEO_DRIVER_X11 1
++#define SDL_VIDEO_DRIVER_X11_XINPUT2 1
++#define SDL_FILESYSTEM_UNIX 1
++#define SDL_FSOPS_POSIX 1
++#define SDL_LOADSO_DLOPEN 1
++#define SDL_THREAD_PTHREAD 1
++#define SDL_TIME_UNIX 1
++#endif
++
++#endif /* SDL_build_config_h_ */

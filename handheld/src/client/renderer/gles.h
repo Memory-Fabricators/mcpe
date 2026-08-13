@@ -1,19 +1,27 @@
 #ifndef NET_MINECRAFT_CLIENT_RENDERER__gles_H__
 #define NET_MINECRAFT_CLIENT_RENDERER__gles_H__
 
+#ifdef _WIN32
+// WinSock2 must precede any header that might include legacy winsock.h.
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <WinSock2.h>
+#include <Windows.h>
+#endif
+
 #include "../../platform/log.h"
 #include "../Options.h"
 
 #define USE_VBO
 #define GL_QUADS 0x0007
+#ifdef MCPE_USE_GL4ES
+#include "gl4es.h"
+#else
 #include <GLES/gl.h>
 #include <GLES/glext.h>
-
-// Uglyness to fix redeclaration issues
-#ifdef WIN32
-#include <WinSock2.h>
-#include <Windows.h>
 #endif
+
 #include <SDL3/SDL.h>
 
 // #define glFogx(a, b) glFogi(a, b)
@@ -265,7 +273,7 @@ int glhUnProjectf(float winx, float winy, float winz, float *modelview,
 //
 // Extensions
 //
-#ifdef WIN32
+#ifdef _WIN32
 #define glGetProcAddress(a) wglGetProcAddress(a)
 #else
 #define glGetProcAddress(a) (void *(0))

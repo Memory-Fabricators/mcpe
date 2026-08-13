@@ -1,7 +1,7 @@
 #include "time.h"
 #include <cstring>
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 #else
 #include <sys/time.h>
@@ -14,7 +14,7 @@
 // would overflow if just using an int -> subtract the number
 // of seconds that had passed when starting the app before
 // doing any calculations.
-#ifdef WIN32
+#ifdef _WIN32
 static long long getStartTime() {
   LARGE_INTEGER ts;
   QueryPerformanceCounter(&ts);
@@ -37,7 +37,7 @@ static unsigned int _t_start = getStartTime();
 /// This is allowed to be here, since getTimeS and getTimeMs both have t(0)
 /// as base (and obviously not good for an initial random seed)
 int getRawTimeS() {
-#ifdef WIN32
+#ifdef _WIN32
   return (int)(GetTickCount() / 1000);
 #else
   timeval now;
@@ -47,7 +47,7 @@ int getRawTimeS() {
 }
 
 float getTimeS() {
-#ifdef WIN32
+#ifdef _WIN32
   // If the game seems to go with different speeds, this might most
   // possibly be the cause. QueryPerformanceCounter has indeed high
   // resolution, but (imho) only guaranteed to be correct for (short)
@@ -66,7 +66,7 @@ float getTimeS() {
 int getTimeMs() { return (int)(getTimeS() * 1000.0f); }
 
 void sleepMs(int ms) {
-#ifdef WIN32
+#ifdef _WIN32
   Sleep(ms);
 #else
   usleep(ms * 1000);

@@ -1,0 +1,81 @@
+module(
+    name = "mcpe",
+    version = "0.6.1",
+)
+
+bazel_dep(name = "platforms", version = "1.1.0")
+bazel_dep(name = "rules_cc", version = "0.2.22")
+bazel_dep(name = "bazel_skylib", version = "1.9.2")
+bazel_dep(name = "llvm", version = "0.7.3")
+git_override(
+    module_name = "llvm",
+    commit = "023712aa7794f00b38dda961171da6b00df4e365",
+    remote = "https://github.com/hermeticbuild/hermetic-llvm",
+)
+
+register_toolchains("@llvm//toolchain:all")
+
+bazel_dep(name = "zlib-ng", version = "2.3.3.bcr.2")
+bazel_dep(name = "libpng", version = "1.6.58")
+bazel_dep(name = "fmt", version = "12.0.0")
+
+single_version_override(
+    module_name = "libpng",
+    patch_strip = 1,
+    patches = ["//third_party/libpng/patches:0001-genrule-cmd-ps.patch"],
+    version = "1.6.58",
+)
+
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+# SDL3, OpenAL Soft, and libANGLE do not have Bazel Central Registry modules,
+# so they are built from source here via non-registry http_archives, with
+# hand-written BUILD files (see third_party/*) instead of running their
+# meson/CMake/GN build systems. Versions/hashes match subprojects/*.wrap.
+#
+# A few of these libraries need small generated config headers that their own
+# build systems normally produce via configure_file()/GN actions
+# (SDL_build_config.h, OpenAL Soft's config*.h). Hand-authored copies live
+# under third_party/*_config for readability; real unified-diff patch files
+# under third_party/*/patches (applied via the `patches` attribute, Bazel's
+# built-in cross-platform patch support -- no CMake/meson/bash-on-Windows
+# genrule involved) add them into the fetched archive alongside a couple of
+# small upstream source tweaks.
+http_archive(
+    name = "sdl3",
+    build_file = "//:third_party/sdl3/BUILD.sdl3.bazel",
+    patch_args = ["-p1"],
+    patches = [
+        "//:third_party/sdl3/patches/0001-add-build-config-header.patch",
+        "//:third_party/sdl3/patches/0002-disable-dynamic-api-guard.patch",
+    ],
+    sha256 = "f07b958a9ac5020fb7a44cadb957f658b2149c3c8abb4f63145fac9303249db7",
+    strip_prefix = "SDL3-3.4.12",
+    url = "https://github.com/libsdl-org/SDL/releases/download/release-3.4.12/SDL3-3.4.12.tar.gz",
+)
+
+http_archive(
+    name = "openal_soft",
+    build_file = "//:third_party/openal_soft/BUILD.openal.bazel",
+    patch_args = ["-p1"],
+    patches = [
+        "//:third_party/openal_soft/patches/0001-add-config.patch",
+        "//:third_party/openal_soft/patches/0002-add-config_backends.patch",
+        "//:third_party/openal_soft/patches/0003-add-config_simd.patch",
+        "//:third_party/openal_soft/patches/0004-add-version.patch",
+    ],
+    sha256 = "7e1fecdeb45e7f78722b776c5cf30bd33934b961d7fd2a11e0494e064cc631ce",
+    strip_prefix = "openal-soft-1.24.3",
+    url = "https://github.com/kcat/openal-soft/archive/refs/tags/1.24.3.tar.gz",
+)
+
+# Windows/D3D11 GLESv1_CM + EGL backend (see third_party/libangle). Only
+# fetched/built on Windows targets; other platforms keep linking system
+# GLESv1/EGL via the ":angle"/default selects in the root BUILD.bazel.
+http_archive(
+    name = "libangle",
+    build_file = "//:third_party/libangle/BUILD.angle.bazel",
+    sha256 = "417b258d83629aeb912a5d77729b64d8ba92b7d20233065acbecd08ea24080d8",
+    strip_prefix = "angle-7e8009eb2c42996fe6e7337bf8d12e1cfe4a1b80",
+    url = "https://github.com/google/angle/archive/7e8009eb2c42996fe6e7337bf8d12e1cfe4a1b80.tar.gz",
+)

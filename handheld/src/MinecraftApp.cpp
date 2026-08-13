@@ -128,7 +128,7 @@ void MinecraftApp::teardown() {
   Recipes ::teardownRecipes();
   TileEntity::teardownTileEntities();
 #endif
-#ifdef WIN32
+#ifndef STANDALONE_SERVER
   ItemRenderer::teardown_static();
   if (EntityTileRenderer::instance != NULL) {
     delete EntityTileRenderer::instance;
@@ -161,7 +161,7 @@ void MinecraftApp::update() {
     restartServer();
   }
 
-#ifndef WIN32
+#ifndef _WIN32
   updateStats();
 #endif
 }

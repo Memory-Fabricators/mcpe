@@ -7,13 +7,13 @@
 
 #define _SECURE_SCL 0
 
-#ifdef WIN32
+#if defined(_WIN32) && !defined(SDL3)
 #include "vld.h"
 #endif
 
 #include "platform/log.h"
 
-#ifdef WIN32
+#ifdef _WIN32
 #endif
 #ifdef ANDROID
 #endif
@@ -21,7 +21,7 @@
 #include "MinecraftApp.h"
 #define MAIN_CLASS MinecraftApp
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(SDL3)
 #include "main_win32.h"
 #endif
 #ifdef ANDROID

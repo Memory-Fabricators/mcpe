@@ -1046,7 +1046,7 @@ improvement at the expense of carrying around more memory.
 
 #include "rdlmalloc-options.h"
 
-#ifndef WIN32
+#ifndef _WIN32
 #if defined(_XBOX) || defined(X360)
 #else
 #if defined(_WIN32)

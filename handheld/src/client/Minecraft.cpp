@@ -40,7 +40,7 @@
 #include "../LicenseCodes.h"
 #include "../Performance.h"
 #include "../platform/input/Mouse.h"
-#include "../util/PerfRenderer.h"
+#include "renderer/PerfRenderer.h"
 #include "../util/PerfTimer.h"
 #include "player/input/MouseBuildInput.h"
 #include <chrono>
@@ -688,7 +688,7 @@ void Minecraft::tickInput() {
     if (isPressed) {
       gui.handleKeyPressed(key);
 
-#if defined(WIN32) || defined(SDL3) //|| defined(_DEBUG) || defined(DEBUG)
+#if defined(_WIN32) || defined(SDL3) //|| defined(_DEBUG) || defined(DEBUG)
       if (key >= '0' && key <= '9') {
         int digit = key - '0';
         int slot = digit - 1;
@@ -696,7 +696,7 @@ void Minecraft::tickInput() {
         if (slot >= 0 && slot < gui.getNumSlots() - 1)
           player->inventory->selectSlot(slot);
 
-#if defined(WIN32)
+#if defined(_WIN32)
         if (digit >= 1 && GetAsyncKeyState(VK_CONTROL) < 0) {
           // Set adventure settings here!
           AdventureSettingsPacket p(level->adventureSettings);
@@ -846,7 +846,7 @@ void Minecraft::tickInput() {
       }
 #endif
     }
-#ifdef WIN32
+#ifdef _WIN32
     if (key == Keyboard::KEY_M) {
       for (int i = 0; i < 5 * SharedConstants::TicksPerSecond; ++i)
         level->tick();
@@ -1210,7 +1210,7 @@ void Minecraft::setSize(int w, int h) {
     inputHolder->onConfigChanged(config);
   // LOGI("Setting size: %d, %d: %f\n", width, height, Gui::InvGuiScale);
 
-#ifdef WIN32
+#ifdef _WIN32
   char resbuf[128];
   sprintf(resbuf, "            %d x %d @ scale %.2f", width, height,
           Gui::GuiScale);
@@ -1369,7 +1369,7 @@ void Minecraft::_levelGenerated() {
     netCallback->levelGenerated(level);
   }
 
-#if defined(WIN32) || defined(SDL3)
+#if defined(_WIN32) || defined(SDL3)
   if (raknetInstance && raknetInstance->isServer()) {
     if (_commandServer) {
       delete _commandServer;

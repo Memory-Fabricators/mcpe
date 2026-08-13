@@ -7,8 +7,8 @@
 class Timer {
 public:
   Timer(float ticksPerSecond)
-      : ticksPerSecond(ticksPerSecond), adjustTime(1.0f), timeScale(1.0f),
-        passedTime(0) {
+      : ticksPerSecond(ticksPerSecond), timeScale(1.0f), passedTime(0),
+        adjustTime(1.0f) {
     lastMs = getTimeMs();
     lastMsSysTime = lastMs;
     lastTime = lastMs / 1000.0f;

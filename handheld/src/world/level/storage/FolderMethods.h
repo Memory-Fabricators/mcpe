@@ -3,7 +3,7 @@
 
 #include "../../../platform/log.h"
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <io.h>
 #else
 int _mkdir(const char *name);

@@ -12,14 +12,15 @@
 
 ```bash
 nix develop
-cmake -B build -G Ninja -DBUILD_WITH_NIX=ON
-cmake --build build
+bazel build //:mcpe_dedicated //:mcpe_sdl3
 # Start the server
-./build/mcpe_dedicated
+bazel run //:mcpe_dedicated
 # Start the client
-./build/mcpe_sdl3
+bazel run //:mcpe_sdl3
 ```
+
+Use `bazel build --config=release //:mcpe_sdl3` for an optimized build. Native builds require SDL3, OpenAL Soft, libpng, and GLES 1 development libraries. Set `--define=gl4es=true` to link against gl4es instead of GLES 1.
 
 ## HTML/Wasm (Emscripten)
 
-See [docs/emscripten.md](docs/emscripten.md) for the Meson-only web build.
+See [docs/emscripten.md](docs/emscripten.md) for the Bazel web build.

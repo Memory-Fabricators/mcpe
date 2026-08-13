@@ -1,0 +1,10 @@
+# Hand-authored config headers for the vendored OpenAL Soft build (normally
+# produced by meson/CMake's configure_file() from *.h.in templates). See
+# //third_party/openal_soft:BUILD.openal.bazel, which copies these into the
+# fetched @openal_soft archive via MODULE.bazel's `patches` attribute.
+exports_files([
+    "config.h",
+    "config_backends.h",
+    "config_simd.h",
+    "version.h",
+])

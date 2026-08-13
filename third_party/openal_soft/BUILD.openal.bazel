@@ -1,0 +1,200 @@
+# From-source Bazel build of OpenAL Soft, vendored via the http_archive in
+# //MODULE.bazel (same tarball/hash as subprojects/openal-soft.wrap).
+#
+# config.h, config_backends.h, config_simd.h, and version.h are normally
+# produced by meson/CMake's configure_file() from *.h.in templates; here they
+# are hand-authored (see //third_party/openal_soft_config) and copied in by
+# MODULE.bazel's `patches` attribute during repository fetch, so no
+# CMake/meson invocation is needed to build this library.
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+_COMMON_SRCS = [
+    "common/alassert.cpp",
+    "common/alcomplex.cpp",
+    "common/alsem.cpp",
+    "common/alstring.cpp",
+    "common/althrd_setname.cpp",
+    "common/dynload.cpp",
+    "common/pffft.cpp",
+    "common/polyphase_resampler.cpp",
+    "common/ringbuffer.cpp",
+    "common/strutils.cpp",
+]
+
+_CORE_SRCS = [
+    "core/ambdec.cpp",
+    "core/ambidefs.cpp",
+    "core/bformatdec.cpp",
+    "core/bs2b.cpp",
+    "core/bsinc_tables.cpp",
+    "core/buffer_storage.cpp",
+    "core/context.cpp",
+    "core/converter.cpp",
+    "core/cpu_caps.cpp",
+    "core/cubic_tables.cpp",
+    "core/devformat.cpp",
+    "core/device.cpp",
+    "core/effectslot.cpp",
+    "core/except.cpp",
+    "core/filters/biquad.cpp",
+    "core/filters/nfc.cpp",
+    "core/filters/splitter.cpp",
+    "core/fpu_ctrl.cpp",
+    "core/helpers.cpp",
+    "core/hrtf.cpp",
+    "core/logging.cpp",
+    "core/mastering.cpp",
+    "core/mixer.cpp",
+    "core/mixer/mixer_c.cpp",
+    "core/storage_formats.cpp",
+    "core/uhjfilter.cpp",
+    "core/uiddefs.cpp",
+    "core/voice.cpp",
+]
+
+_AL_SRCS = [
+    "al/auxeffectslot.cpp",
+    "al/buffer.cpp",
+    "al/debug.cpp",
+    "al/effect.cpp",
+    "al/effects/autowah.cpp",
+    "al/effects/chorus.cpp",
+    "al/effects/compressor.cpp",
+    "al/effects/convolution.cpp",
+    "al/effects/dedicated.cpp",
+    "al/effects/distortion.cpp",
+    "al/effects/echo.cpp",
+    "al/effects/effects.cpp",
+    "al/effects/equalizer.cpp",
+    "al/effects/fshifter.cpp",
+    "al/effects/modulator.cpp",
+    "al/effects/null.cpp",
+    "al/effects/pshifter.cpp",
+    "al/effects/reverb.cpp",
+    "al/effects/vmorpher.cpp",
+    "al/error.cpp",
+    "al/event.cpp",
+    "al/extension.cpp",
+    "al/filter.cpp",
+    "al/listener.cpp",
+    "al/source.cpp",
+    "al/state.cpp",
+]
+
+_ALC_SRCS = [
+    "alc/alc.cpp",
+    "alc/alconfig.cpp",
+    "alc/alu.cpp",
+    "alc/context.cpp",
+    "alc/device.cpp",
+    "alc/effects/autowah.cpp",
+    "alc/effects/chorus.cpp",
+    "alc/effects/compressor.cpp",
+    "alc/effects/convolution.cpp",
+    "alc/effects/dedicated.cpp",
+    "alc/effects/distortion.cpp",
+    "alc/effects/echo.cpp",
+    "alc/effects/equalizer.cpp",
+    "alc/effects/fshifter.cpp",
+    "alc/effects/modulator.cpp",
+    "alc/effects/null.cpp",
+    "alc/effects/pshifter.cpp",
+    "alc/effects/reverb.cpp",
+    "alc/effects/vmorpher.cpp",
+    "alc/events.cpp",
+    "alc/panning.cpp",
+    # Default backends, always available.
+    "alc/backends/base.cpp",
+    "alc/backends/loopback.cpp",
+    "alc/backends/null.cpp",
+    "alc/backends/wave.cpp",
+]
+
+cc_library(
+    name = "common",
+    srcs = _COMMON_SRCS,
+    hdrs = glob(["common/**/*.h"]) + [
+        "config.h",
+        "config_backends.h",
+        "config_simd.h",
+        "version.h",
+    ],
+    includes = ["."],
+    local_defines = [
+        "AL_BUILD_LIBRARY",
+        "AL_ALEXT_PROTOTYPES",
+        "AL_API=",
+        "ALC_API=",
+        "RESTRICT=__restrict",
+    ] + select({
+        ":windows": ["NOMINMAX", "_CRT_SECURE_NO_WARNINGS"],
+        "//conditions:default": [],
+    }),
+    deps = ["@fmt"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "openal",
+    srcs = _CORE_SRCS + _AL_SRCS + _ALC_SRCS + select({
+        ":x86_64": [
+            "core/mixer/mixer_sse.cpp",
+            "core/mixer/mixer_sse2.cpp",
+            "core/mixer/mixer_sse3.cpp",
+            "core/mixer/mixer_sse41.cpp",
+        ],
+        "//conditions:default": [],
+    }) + select({
+        ":windows": ["alc/backends/dsound.cpp"],
+        ":macos": ["alc/backends/coreaudio.cpp"],
+        "//conditions:default": ["alc/backends/alsa.cpp"],
+    }),
+    hdrs = glob([
+        "core/**/*.h",
+        "al/**/*.h",
+        "alc/**/*.h",
+        "include/**/*.h",
+    ]),
+    includes = [
+        "common",
+        "include",
+        "include/AL",
+    ],
+    defines = [
+        "AL_BUILD_LIBRARY",
+        "AL_ALEXT_PROTOTYPES",
+        "AL_API=",
+        "ALC_API=",
+        "RESTRICT=__restrict",
+        "AL_LIBTYPE_STATIC",
+    ] + select({
+        ":windows": ["NOMINMAX", "_CRT_SECURE_NO_WARNINGS"],
+        "//conditions:default": [],
+    }),
+    linkopts = select({
+        ":windows": [],
+        ":macos": [
+            "-framework AudioToolbox",
+            "-framework CoreAudio",
+            "-framework CoreFoundation",
+        ],
+        "//conditions:default": ["-lasound", "-lpthread"],
+    }),
+    deps = [":common"],
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "windows",
+    constraint_values = ["@platforms//os:windows"],
+)
+
+config_setting(
+    name = "macos",
+    constraint_values = ["@platforms//os:macos"],
+)
+
+config_setting(
+    name = "x86_64",
+    constraint_values = ["@platforms//cpu:x86_64"],
+)

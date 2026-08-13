@@ -10,7 +10,11 @@
 #include <vector>
 
 #include <SDL3/SDL.h>
+#ifdef _WIN32
+#include <direct.h>
+#else
 #include <unistd.h>
+#endif
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #include <emscripten/html5_webgl.h>
@@ -194,6 +198,9 @@ void move_surface(App *app, AppContext *state, uint32_t x, uint32_t y,
   SDL_ShowWindow(state->window);
   SDL_RaiseWindow(state->window);
   SDL_GL_MakeCurrent(state->window, state->context);
+#ifdef MCPE_USE_GL4ES
+  initialize_gl4es();
+#endif
 
 #ifdef __EMSCRIPTEN__
   // SDL creates this context directly, bypassing Browser.createContext().
@@ -414,7 +421,11 @@ int main(int argc, char **argv) {
   // }
 
   char buf[1024];
+#ifdef _WIN32
+  _getcwd(buf, 1000);
+#else
   getcwd(buf, 1000);
+#endif
   // printf("getcwd: %s\n", buf);
 
   // printf("HOME: %s\n", getenv("HOME"));

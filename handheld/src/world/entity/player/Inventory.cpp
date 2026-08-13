@@ -103,7 +103,7 @@ void Inventory::setupDefault() {
     addItem(new ItemInstance((Tile *)Tile::leaves, 1, 2));
     addItem(new ItemInstance(Tile::stoneSlabHalf));
   } else {
-#if defined(WIN32)
+#if defined(_WIN32)
     // Survival
     addItem(new ItemInstance((Item *)Item::shears));
     addItem(new ItemInstance(Tile::redBrick));
@@ -249,7 +249,7 @@ void Inventory::setupDefault() {
     addItem(new ItemInstance(Item::bow));
     addItem(new ItemInstance(Item::sign));
   } else {
-#if defined(WIN32)
+#if defined(_WIN32)
     // Survival
     addItem(new ItemInstance(Item::ironIngot, 64));
     addItem(new ItemInstance(Item::ironIngot, 34));

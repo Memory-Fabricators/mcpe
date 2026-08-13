@@ -1,0 +1,198 @@
+package(default_visibility = ["//visibility:public"])
+
+load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+config_setting(
+    name = "angle",
+    define_values = {"angle": "true"},
+)
+config_setting(
+    name = "windows",
+    constraint_values = ["@platforms//os:windows"],
+)
+
+config_setting(
+    name = "macos",
+    constraint_values = ["@platforms//os:macos"],
+)
+
+COMMON_SRCS = [
+    "handheld/src/MinecraftApp.cpp",
+    "handheld/src/Performance.cpp",
+    "handheld/src/SharedConstants.cpp",
+    "handheld/src/locale/I18n.cpp",
+    "handheld/src/nbt/Tag.cpp",
+    "handheld/src/network/NATPunchHandler.cpp",
+    "handheld/src/network/NetEventCallback.cpp",
+    "handheld/src/network/PHPDirectoryServer2.cpp",
+    "handheld/src/network/Packet.cpp",
+    "handheld/src/network/RakNetInstance.cpp",
+    "handheld/src/network/ServerSideNetworkHandler.cpp",
+    "handheld/src/network/command/CommandServer.cpp",
+    "handheld/src/platform/time.cpp",
+    "handheld/src/client/IConfigListener.cpp",
+    "handheld/src/client/Minecraft.cpp",
+    "handheld/src/client/OptionStrings.cpp",
+    "handheld/src/client/Options.cpp",
+    "handheld/src/client/OptionsFile.cpp",
+    "handheld/src/client/player/LocalPlayer.cpp",
+    "handheld/src/client/player/RemotePlayer.cpp",
+    "handheld/src/client/gamemode/CreativeMode.cpp",
+    "handheld/src/client/gamemode/CreatorMode.cpp",
+    "handheld/src/client/gamemode/GameMode.cpp",
+    "handheld/src/client/gamemode/SurvivalMode.cpp",
+] + glob([
+    "handheld/src/raknet/**/*.cpp",
+    "handheld/src/server/**/*.cpp",
+    "handheld/src/util/*.cpp",
+    "handheld/src/world/**/*.cpp",
+])
+
+CLIENT_COMMON_SRCS = [
+    "handheld/src/network/ClientSideNetworkHandler.cpp",
+    "handheld/src/platform/audio/SoundSystemAL.cpp",
+    "handheld/src/platform/input/Controller.cpp",
+    "handheld/src/platform/input/Keyboard.cpp",
+    "handheld/src/platform/input/Mouse.cpp",
+    "handheld/src/platform/input/Multitouch.cpp",
+] + glob(
+    ["handheld/src/client/**/*.cpp"],
+    exclude = [
+        "handheld/src/client/IConfigListener.cpp",
+        "handheld/src/client/Minecraft.cpp",
+        "handheld/src/client/OptionStrings.cpp",
+        "handheld/src/client/Options.cpp",
+        "handheld/src/client/OptionsFile.cpp",
+        "handheld/src/client/player/LocalPlayer.cpp",
+        "handheld/src/client/player/RemotePlayer.cpp",
+        "handheld/src/client/gamemode/CreativeMode.cpp",
+        "handheld/src/client/gamemode/CreatorMode.cpp",
+        "handheld/src/client/gamemode/GameMode.cpp",
+        "handheld/src/client/gamemode/SurvivalMode.cpp",
+    ],
+) + select({
+    ":macos": ["handheld/src/world/level/storage/MoveFolder.mm"],
+    "//conditions:default": [],
+})
+
+cc_library(
+    name = "mcpe_headers",
+    hdrs = glob(["handheld/src/**/*.h"]),
+    includes = ["handheld/src"],
+    deps = ["@sdl3//:sdl3"] + select({
+        ":windows": ["@libangle//:libangle"],
+        "//conditions:default": [],
+    }),
+)
+
+cc_binary(
+    name = "mcpe_dedicated",
+    srcs = COMMON_SRCS + ["handheld/src/main_dedicated.cpp"],
+    copts = ["-DSTANDALONE_SERVER"],
+    deps = [":mcpe_headers", "@openal_soft//:openal"],
+    linkopts = ["-lws2_32"]
+)
+
+cc_binary(
+    name = "mcpe_sdl3",
+    srcs = COMMON_SRCS + CLIENT_COMMON_SRCS + ["handheld/src/main.cpp"],
+    copts = [
+        "-DSDL3",
+        "-DOPENGL_ES",
+        "-DGL_GLES_PROTOTYPES=1",
+        "-DGL_GLEXT_PROTOTYPES=1",
+        "-DGL_APICALL=",
+        "-DGL_API=",
+        "-DEGLAPI=",
+    ] + select({
+        # MSVC's params-file argument parsing unescapes a single
+        # backslash-quote (\") before cl.exe ever sees it, silently
+        # stripping the quotes around the string value; doubling the
+        # backslash here is Bazel's documented workaround so cl.exe still
+        # receives -DMCPE_INSTALL_DATA_DIR=\"data\" verbatim.
+        ":windows": ["-DMCPE_INSTALL_DATA_DIR=\\\"data\\\""],
+        "//conditions:default": ["-DMCPE_INSTALL_DATA_DIR=\"data\""],
+    }),
+    # SDL3/OpenAL/libpng are built from source via bzlmod on every platform
+    # (see MODULE.bazel and third_party/*). GLESv1/EGL come from libANGLE
+    # (also from source) on Windows; other platforms still expect a system
+    # GLESv1_CM/EGL implementation (e.g. Mesa), same as before this port.
+    deps = [
+        ":mcpe_headers",
+        "@sdl3//:sdl3",
+        "@openal_soft//:openal",
+        "@libpng//:libpng",
+    ] + select({
+        ":windows": ["@libangle//:libangle"],
+        "//conditions:default": [],
+    }),
+    linkopts = select({
+        ":windows": ["-lws2_32"],
+        "//conditions:default": ["-lGLESv1_CM", "-lEGL"],
+    }),
+)
+
+# FIXME: use hermetic llvm
+# Web (Emscripten/wasm) client. Only buildable through the :web wasm_cc_binary
+# below, which transitions this target and its deps to the emsdk toolchain
+# registered from MODULE.bazel -- no hand-rolled CC/CXX required.
+# cc_binary(
+#     name = "mcpe_sdl3_web",
+#     srcs = COMMON_SRCS + CLIENT_COMMON_SRCS + ["handheld/src/main.cpp"],
+#     copts = [
+#         "-DSDL3",
+#         "-DOPENGL_ES",
+#         "-DGL_GLES_PROTOTYPES=1",
+#         "-DGL_GLEXT_PROTOTYPES=1",
+#         "-DMCPE_WEB",
+#         "-DMCPE_INSTALL_DATA_DIR=\"/data\"",
+#         # The Emscripten ports supply their headers only when the port flag is
+#         # also passed at compile time (not just at link time).
+#         "--use-port=sdl3",
+#         "--use-port=libpng",
+#     ],
+#     deps = [":mcpe_headers"],
+#     linkopts = [
+#         "--use-port=sdl3",
+#         "--use-port=libpng",
+#         "-sLEGACY_GL_EMULATION",
+#         "-sGL_UNSAFE_OPTS=0",
+#         "-sPTHREAD_POOL_SIZE=2",
+#         "-sPROXY_TO_PTHREAD",
+#         "-sOFFSCREENCANVAS_SUPPORT=1",
+#         "-sOFFSCREENCANVASES_TO_PTHREAD=#canvas",
+#         "-sALLOW_MEMORY_GROWTH=1",
+#         "-sFORCE_FILESYSTEM=1",
+#         "--preload-file",
+#         "data@/data",
+#     ],
+# )
+
+# # Extracts the emcc-produced .js/.wasm/.data artifacts. `threads = "emscripten"`
+# # adds the use_pthreads toolchain feature (which supplies -pthread) to match
+# # the -sPROXY_TO_PTHREAD/-sOFFSCREENCANVAS_SUPPORT linkopts above.
+# wasm_cc_binary(
+#     name = "web_bin",
+#     cc_target = ":mcpe_sdl3_web",
+#     outputs = [
+#         "mcpe_sdl3_web.js",
+#         "mcpe_sdl3_web.wasm",
+#         "mcpe_sdl3_web.data",
+#     ],
+#     threads = "emscripten",
+# )
+
+# # Builds the browser executable plus the page that hosts it. copy_file (not
+# # genrule) so this works on Windows without a bash dependency.
+# copy_file(
+#     name = "web_index",
+#     src = "web/index.html",
+#     out = "index.html",
+#     allow_symlink = True,
+# )
+
+# filegroup(
+#     name = "web",
+#     srcs = [":web_bin", ":web_index"],
+# )

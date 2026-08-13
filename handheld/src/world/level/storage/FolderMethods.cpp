@@ -1,7 +1,7 @@
 #include "FolderMethods.h"
 #include <string>
 
-#ifndef WIN32
+#ifndef _WIN32
 
 #include <errno.h>
 #include <sys/stat.h>

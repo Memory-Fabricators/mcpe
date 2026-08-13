@@ -1,0 +1,16 @@
+--- a/BUILD.bazel
++++ b/BUILD.bazel
+@@ -27,6 +27,13 @@
+     srcs = ["scripts/pnglibconf.h.prebuilt"],
+     outs = ["pnglibconf.h"],
+     cmd = "cp $(location scripts/pnglibconf.h.prebuilt) $(location pnglibconf.h)",
++    # cmd_ps avoids requiring bash on Windows (genrule's default `cmd`
++    # shells out to bash.exe, which may be WSL bash with no distro
++    # installed rather than Git Bash). cmd_bat (cmd.exe's `copy`) doesn't
++    # work either: cmd.exe's copy treats a bare `+` as a file-concatenation
++    # separator, and the libpng repo path contains a literal `+`
++    # (libpng+), so PowerShell's Copy-Item is used instead.
++    cmd_ps = "Copy-Item $(location scripts/pnglibconf.h.prebuilt) $(location pnglibconf.h)",
+ )
+ 
+ cc_library(

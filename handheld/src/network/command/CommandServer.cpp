@@ -3,7 +3,7 @@
 #include "../../world/entity/Entity.h"
 #include "../../world/level/Level.h"
 
-#ifdef WIN32
+#ifdef _WIN32
 #define SERR(x) (WSA##x)
 #else
 #define SERR(x) (x)
@@ -63,7 +63,7 @@ private:
 };
 
 static int getSocketError() {
-#ifdef WIN32
+#ifdef _WIN32
   return WSAGetLastError();
 #else
   return errno;
@@ -111,7 +111,7 @@ CommandServer::~CommandServer() {
 void CommandServer::_close() {
   if (inited) {
     if (serverSocket > 0) {
-#ifdef WIN32
+#ifdef _WIN32
       closesocket(serverSocket);
 #else
       close(serverSocket);
@@ -673,7 +673,7 @@ bool setSocketBlocking(int socket, bool blocking) {
     return false;
   }
 
-#ifdef WIN32
+#ifdef _WIN32
   unsigned long mode = blocking ? 0 : 1;
   return (ioctlsocket(socket, FIONBIO, &mode) == 0) ? true : false;
 #else

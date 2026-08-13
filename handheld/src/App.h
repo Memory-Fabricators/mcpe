@@ -23,7 +23,7 @@ typedef struct AppContext {
 
 class App {
 public:
-  App() : _finished(false), _inited(false) { _context.platform = 0; }
+  App() : _inited(false), _finished(false) { _context.platform = 0; }
   virtual ~App() {}
 
   void init(AppContext &c) {

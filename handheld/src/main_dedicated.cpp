@@ -4,7 +4,6 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 
 #include "SharedConstants.h"
 #include "platform/time.h"

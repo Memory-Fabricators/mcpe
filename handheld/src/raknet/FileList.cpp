@@ -8,6 +8,7 @@
 #ifdef _WIN32
 // For mkdir
 #include <direct.h>
+#include <io.h>
 
 #else
 #include <sys/stat.h>

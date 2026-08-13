@@ -1,5 +1,3 @@
-/build/
-/build-*/
 .cache/
 .ruff_cache/
 *.pyc
@@ -8,8 +6,6 @@
 /result
 /result-*
 .DS_Store
-/subprojects/*
-!/subprojects/*.wrap
-!/subprojects/packagefiles
 *.out.js
 *.out.wasm
+/bazel-*

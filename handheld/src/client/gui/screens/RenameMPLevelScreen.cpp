@@ -22,7 +22,7 @@ void RenameMPLevelScreen::init() {
 void RenameMPLevelScreen::render(int xm, int ym, float a) {
   renderBackground();
 
-#ifdef WIN32
+#ifdef _WIN32
   minecraft->getLevelSource()->renameLevel(_levelId, "Save?Level");
   minecraft->screenChooser.setScreen(SCREEN_STARTMENU);
 #else

@@ -1,0 +1,8 @@
+build --compilation_mode=dbg
+build --features=thin_lto
+
+build:release --compilation_mode=opt
+
+# The Emscripten toolchain is provided by the `emsdk` bzlmod module and
+# selected automatically via wasm_cc_binary's transition; no CC/CXX needed.
+build:web --compilation_mode=opt

@@ -1,0 +1,18 @@
+# Vendored from Chromium's third_party/zlib/google/compression_utils_portable.{h,cc}
+# (BSD-style license, see file headers) since ANGLE's frame-capture code
+# (src/libANGLE/capture/FrameCapture*.cpp) includes "compression_utils_portable.h"
+# unqualified, expecting it from Chromium's own source tree (fetched there via
+# gclient/DEPS, which this project deliberately avoids). It's a thin,
+# self-contained wrapper around zlib's raw deflate/inflate API with no other
+# Chromium dependencies, so it builds cleanly against our own @zlib -- and
+# stays source-compatible if @zlib is ever swapped for zlib-ng.
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "compression_utils_portable",
+    srcs = ["compression_utils_portable.cc"],
+    hdrs = ["compression_utils_portable.h"],
+    includes = ["."],
+    visibility = ["//visibility:public"],
+    deps = ["@zlib-ng//:zlib"],
+)
