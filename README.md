@@ -5,15 +5,17 @@
 - Fixed multiplayer
 - Added a direct connect option
 - Ported to SDL3
-- Added the CMake build system
-- Added a userame field
+- Migrated to the Meson build system
+- Added a username field
 
-## Developing With Nix
+## Building from Source
+
+You will need Meson (>=1.12), Ninja and a GLESv1 translation layer (or native device support).
+You can install my Zig 0.17-based libANGLE replacement at `https://github.com/tinted-software/angle_zig` for the easiest route.
 
 ```bash
-nix develop
-cmake -B build -G Ninja -DBUILD_WITH_NIX=ON
-cmake --build build
+meson setup build
+meson compile -C build
 # Start the server
 ./build/mcpe_dedicated
 # Start the client

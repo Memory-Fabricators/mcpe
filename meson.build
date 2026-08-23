@@ -5,7 +5,8 @@ project(
   default_options: [
     'cpp_std=c++26',
     'rust_std=2024',
-    'buildtype=debugoptimized',
+    'buildtype=minsize',
+    'b_ndebug=false',
     'warning_level=3',
     'default_library=static',
     'cpp_rtti=false',
@@ -63,7 +64,7 @@ else
   if build_client
     sdl3_dep = dependency('sdl3')
     libpng_dep = dependency('libpng')
-    gles_dep = dependency('glesv1_cm')
+    gles_dep = meson.get_compiler('c').find_library('GLESv1_CM')
     client_deps += [sdl3_dep, openal_dep, libpng_dep, gles_dep]
 
     if host_machine.system() == 'darwin'
